@@ -52,7 +52,6 @@ const EssayEditor: React.FC = () => {
   const [showEssayList, setShowEssayList] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeComment, setActiveComment] = useState<InlineComment | null>(null);
-  const [commentPosition, setCommentPosition] = useState<{ x: number; y: number } | null>(null);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const essayContentRef = useRef<HTMLDivElement>(null);
@@ -120,17 +119,13 @@ const EssayEditor: React.FC = () => {
       parts.push(
         <span
           key={`comment-${idx}`}
-          className="bg-yellow-200 border-b-2 border-yellow-500 cursor-pointer hover:bg-yellow-300 transition-colors"
+          className={`cursor-pointer transition-colors ${
+            activeComment?.id === comment.id
+              ? 'bg-yellow-300 border-b-2 border-yellow-600'
+              : 'bg-yellow-200 border-b-2 border-yellow-500 hover:bg-yellow-300'
+          }`}
           onClick={(e) => {
             e.stopPropagation();
-            const rect = e.currentTarget.getBoundingClientRect();
-            const containerRect = e.currentTarget.closest('.essay-container')?.getBoundingClientRect();
-            if (containerRect) {
-              setCommentPosition({
-                x: containerRect.right + 20,
-                y: rect.top
-              });
-            }
             setActiveComment(comment);
           }}
         >
@@ -150,12 +145,6 @@ const EssayEditor: React.FC = () => {
     }
 
     return <div>{parts}</div>;
-  };
-
-  const handleCommentClick = (comment: InlineComment, event: React.MouseEvent) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    setCommentPosition({ x: rect.left, y: rect.bottom + 5 });
-    setActiveComment(comment);
   };
 
   const countWords = (html: string) => {
@@ -178,20 +167,6 @@ const EssayEditor: React.FC = () => {
       setSelectedEssay({ ...selectedEssay, content, wordCount });
     }
   };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (activeComment && commentPosition) {
-        setActiveComment(null);
-        setCommentPosition(null);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [activeComment, commentPosition]);
 
   useEffect(() => {
     const essaysRef = ref(database, `University Data/Essays/${studentName}`);
@@ -499,7 +474,7 @@ const EssayEditor: React.FC = () => {
           </div>
         )}
 
-        <div>
+        <div className={selectedEssay?.status === 'reviewed' && selectedEssay.reviewData ? "grid grid-cols-[1fr,400px] gap-6" : ""}>
           {selectedEssay ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="border-b border-gray-200 p-4">
@@ -633,39 +608,6 @@ const EssayEditor: React.FC = () => {
                 </div>
               )}
 
-              {activeComment && commentPosition && (
-                <div
-                  className="fixed bg-white border-l-4 border-yellow-500 rounded-lg shadow-2xl p-4 z-50 w-80"
-                  style={{
-                    left: `${commentPosition.x}px`,
-                    top: `${commentPosition.y}px`
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-semibold text-gray-700">
-                      {activeComment.counselor_name}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setActiveComment(null);
-                        setCommentPosition(null);
-                      }}
-                      className="text-gray-400 hover:text-gray-600 -mt-1 -mr-1"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-600 italic mb-3 bg-yellow-50 px-2 py-1.5 rounded border border-yellow-200">
-                    "{activeComment.highlighted_text}"
-                  </p>
-                  <p className="text-sm text-gray-800 leading-relaxed">
-                    {activeComment.comment_text}
-                  </p>
-                </div>
-              )}
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
@@ -683,29 +625,83 @@ const EssayEditor: React.FC = () => {
           )}
 
           {selectedEssay?.status === 'reviewed' && selectedEssay.reviewData && (
-            <div className="mt-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-fit sticky top-6 max-h-[calc(100vh-120px)] overflow-y-auto">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Feedback</h3>
+
               {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-gray-700">
-                    <span className="font-semibold">{selectedEssay.reviewData.inlineComments.length} inline comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''}</span> are highlighted in your essay. Click on the highlighted text to view each comment.
-                  </p>
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare className="w-4 h-4 text-yellow-600" />
+                    <h4 className="text-sm font-semibold text-gray-700">Inline Comments</h4>
+                  </div>
+
+                  {activeComment ? (
+                    <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4 mb-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-xs font-semibold text-gray-700">
+                          {activeComment.counselor_name}
+                        </p>
+                        <button
+                          onClick={() => setActiveComment(null)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-600 italic mb-2 bg-yellow-100 px-2 py-1.5 rounded border border-yellow-200">
+                        "{activeComment.highlighted_text}"
+                      </p>
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        {activeComment.comment_text}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                      <p className="text-xs text-gray-600">
+                        <span className="font-semibold">{selectedEssay.reviewData.inlineComments.length} comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''}</span> highlighted. Click on highlighted text to view.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {selectedEssay.reviewData.inlineComments.map((comment, idx) => (
+                      <button
+                        key={comment.id}
+                        onClick={() => setActiveComment(comment)}
+                        className={`w-full text-left p-3 rounded-lg border transition-all ${
+                          activeComment?.id === comment.id
+                            ? 'bg-yellow-100 border-yellow-400'
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        <p className="text-xs font-medium text-gray-700 mb-1">
+                          Comment {idx + 1}
+                        </p>
+                        <p className="text-xs text-gray-600 line-clamp-2">
+                          "{comment.highlighted_text}"
+                        </p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
               {selectedEssay.reviewData.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-blue-600" />
-                    General Feedback
-                  </h3>
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare className="w-4 h-4 text-blue-600" />
+                    <h4 className="text-sm font-semibold text-gray-700">General Feedback</h4>
+                  </div>
                   <div className="space-y-3">
                     {selectedEssay.reviewData.generalComments.map((comment) => (
                       <div
                         key={comment.id}
-                        className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                        className="bg-blue-50 border border-blue-200 rounded-lg p-4"
                       >
                         <div className="flex justify-between items-start mb-2">
-                          <p className="text-sm font-semibold text-gray-700">
+                          <p className="text-xs font-semibold text-gray-700">
                             {comment.counselor_name}
                           </p>
                           <p className="text-xs text-gray-500">
