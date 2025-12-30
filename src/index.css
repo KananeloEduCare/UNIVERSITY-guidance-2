@@ -1,0 +1,450 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mobile-first responsive base styles */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 16px;
+  }
+  
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  }
+}
+
+/* Mobile app specific styles */
+@media (max-width: 768px) {
+  /* Larger touch targets for mobile */
+  button, input, select, textarea {
+    min-height: 44px;
+  }
+  
+  /* Better mobile typography */
+  body {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  /* Native mobile app styles */
+  .mobile-app-card {
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    background: white;
+  }
+  
+  .mobile-app-button {
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    min-height: 44px;
+    transition: all 0.2s ease;
+  }
+  
+  .mobile-app-button:active {
+    transform: scale(0.96);
+  }
+  
+  .mobile-app-input {
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+    min-height: 44px;
+  }
+  
+  .mobile-app-input:focus {
+    border-color: #04adee;
+    box-shadow: 0 0 0 2px rgba(4, 173, 238, 0.1);
+  }
+}
+
+/* Touch-friendly interactions */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Active states for mobile */
+@media (max-width: 768px) {
+  .active\:scale-98:active {
+    transform: scale(0.98);
+  }
+  
+  .active\:bg-gray-100:active {
+    background-color: #f3f4f6;
+  }
+  
+  .active\:bg-red-100:active {
+    background-color: #fee2e2;
+  }
+  
+  /* Native mobile app touch feedback */
+  .mobile-touch-feedback:active {
+    transform: scale(0.98);
+    opacity: 0.8;
+  }
+  
+  /* Mobile app navigation */
+  .mobile-nav-item {
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  
+  .mobile-nav-item:active {
+    transform: scale(0.98);
+    background-color: rgba(4, 173, 238, 0.1);
+  }
+}
+
+/* Safe area support for mobile devices */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Custom animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Smooth transitions for all interactive elements */
+button, input, select, textarea, .transition-all {
+  transition: colors 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Mobile-specific transitions */
+@media (max-width: 768px) {
+  button, input, select, textarea {
+    transition: all 0.2s ease;
+  }
+}
+
+/* Custom focus styles for better accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #04adee;
+  outline-offset: 2px;
+}
+
+/* Mobile focus styles */
+@media (max-width: 768px) {
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid #04adee;
+    outline-offset: 3px;
+  }
+}
+
+/* Custom loading spinner */
+.spinner {
+  border: 2px solid #f3f4f6;
+  border-top: 2px solid #04adee;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Hover effects for cards */
+.card-hover:hover {
+  transform: translateY(-2px);
+}
+
+/* Mobile-optimized card hover */
+@media (hover: none) {
+  .card-hover:hover {
+    transform: none;
+  }
+  
+  .card-hover:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Custom range slider styles */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 3px;
+  background: #e2e8f0;
+  outline: none;
+}
+
+@media (min-width: 768px) {
+  input[type="range"] {
+    height: 6px;
+  }
+}
+
+@media (max-width: 768px) {
+  input[type="range"] {
+    height: 8px;
+  }
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #04adee;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+@media (min-width: 768px) {
+  input[type="range"]::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  input[type="range"]::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #04adee;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+@media (min-width: 768px) {
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Responsive text utilities */
+@media (max-width: 640px) {
+  .text-responsive {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+}
+
+/* Mobile-optimized spacing */
+@media (max-width: 640px) {
+  .mobile-compact {
+    padding: 1.5rem;
+  }
+}
+
+/* Prevent horizontal scroll on mobile */
+body {
+  overflow-x: hidden;
+}
+
+/* Ensure proper viewport handling */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+/* Mobile app specific enhancements */
+@media (max-width: 768px) {
+  /* Native mobile app shadows */
+  .mobile-shadow-sm {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  
+  .mobile-shadow-md {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  
+  .mobile-shadow-lg {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+  
+  /* Mobile app typography */
+  .mobile-heading-1 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    font-weight: 700;
+  }
+  
+  .mobile-heading-2 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    font-weight: 600;
+  }
+  
+  .mobile-heading-3 {
+    font-size: 1.25rem;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  
+  .mobile-body-text {
+    font-size: 1rem;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  
+  .mobile-caption {
+    font-size: 0.875rem;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  
+  /* Mobile app spacing system */
+  .mobile-spacing-xs { padding: 8px; }
+  .mobile-spacing-sm { padding: 12px; }
+  .mobile-spacing-md { padding: 16px; }
+  .mobile-spacing-lg { padding: 24px; }
+  .mobile-spacing-xl { padding: 32px; }
+  
+  /* Mobile app colors */
+  .mobile-primary { background-color: #04adee; }
+  .mobile-primary-light { background-color: rgba(4, 173, 238, 0.1); }
+  .mobile-success { background-color: #10b981; }
+  .mobile-warning { background-color: #f59e0b; }
+  .mobile-error { background-color: #ef4444; }
+  
+  /* Mobile app animations */
+  .mobile-fade-in {
+    animation: mobile-fade-in 0.3s ease-out;
+  }
+  
+  .mobile-slide-up {
+    animation: mobile-slide-up 0.3s ease-out;
+  }
+  
+  @keyframes mobile-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes mobile-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
