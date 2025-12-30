@@ -104,6 +104,9 @@ const MeetingBookingPage: React.FC<MeetingBookingPageProps> = ({
       const studentName = currentUser.name;
       const requestedAt = new Date().toISOString();
 
+      const meetingId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const meetingLink = `https://meet.jit.si/collegeadvisor-${meetingId}`;
+
       const timeslotPath = `University Data/Timeslots/${counselorName}/${selectedSlot.rawKey}`;
       const timeslotRef = ref(database, timeslotPath);
       await set(timeslotRef, true);
@@ -112,7 +115,10 @@ const MeetingBookingPage: React.FC<MeetingBookingPageProps> = ({
       const upcomingMeetingRef = ref(database, upcomingMeetingPath);
       await set(upcomingMeetingRef, {
         agenda: agenda.trim(),
-        requestedAt: requestedAt
+        requestedAt: requestedAt,
+        meetingLink: meetingLink,
+        studentEmail: currentUser.email || '',
+        counselorName: counselorName
       });
 
       setSubmitting(false);

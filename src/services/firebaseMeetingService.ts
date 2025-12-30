@@ -18,6 +18,7 @@ export interface MeetingRequest {
   requestedDate: string;
   requestedTime: string;
   rejectionReason?: string;
+  meetingLink?: string;
 }
 
 export const firebaseMeetingService = {
@@ -168,5 +169,21 @@ export const firebaseMeetingService = {
     });
 
     return unsubscribe;
+  },
+
+  generateMeetingLink(meetingId: string): string {
+    return `https://meet.jit.si/collegeadvisor-${meetingId}`;
+  },
+
+  async updateMeetingLink(counselorName: string, meetingId: string, meetingLink: string): Promise<void> {
+    const meetingRef = ref(database, `University Data/MeetingRequests/${counselorName}/${meetingId}`);
+    const snapshot = await get(meetingRef);
+
+    if (snapshot.exists()) {
+      await set(meetingRef, {
+        ...snapshot.val(),
+        meetingLink
+      });
+    }
   }
 };

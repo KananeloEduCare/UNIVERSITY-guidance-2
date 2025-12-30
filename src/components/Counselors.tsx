@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Calendar, Star, MapPin, GraduationCap, Award, Clock, Mail, Loader, CheckCircle, XCircle, AlertCircle, MessageSquare, User, Globe } from 'lucide-react';
+import { MessageCircle, Calendar, Star, MapPin, GraduationCap, Award, Clock, Mail, Loader, CheckCircle, XCircle, AlertCircle, MessageSquare, User, Globe, Video } from 'lucide-react';
 import { database } from '../config/firebase';
 import { ref, get } from 'firebase/database';
 import { userStorage } from '../services/userStorage';
@@ -225,7 +225,7 @@ const Counselors: React.FC<CounselorsProps> = ({ onBookMeeting }) => {
                 status: 'accepted',
                 requestedDate: formattedRequestedDate,
                 meetingDateTime: meetingDate,
-                meetingLink: undefined
+                meetingLink: meetingData.meetingLink || undefined
               });
 
               meetings.sort((a, b) => a.meetingDateTime.getTime() - b.meetingDateTime.getTime());
@@ -505,25 +505,37 @@ const Counselors: React.FC<CounselorsProps> = ({ onBookMeeting }) => {
                         <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
                         <div className="flex-1">
                           <h4 className="text-sm font-semibold text-green-900 mb-1">Meeting Confirmed!</h4>
-                          <p className="text-sm text-green-800 mb-3">
-                            Your meeting has been confirmed. A calendar invite will be sent to your email shortly.
-                            Please join at the scheduled time.
+                          <p className="text-sm text-green-800">
+                            Your meeting has been confirmed. Click the button below to join the video call at the scheduled time.
                           </p>
-                          {meeting.meetingLink && (
-                            <a
-                              href={meeting.meetingLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                            >
-                              <Calendar className="w-4 h-4 mr-2" />
-                              Join Meeting
-                            </a>
-                          )}
                         </div>
                       </div>
                     </div>
                   </div>
+
+                  {meeting.meetingLink && (
+                    <button
+                      onClick={() => window.open(meeting.meetingLink, '_blank')}
+                      className="w-full bg-gradient-to-r from-[#04adee] to-[#0396d5] text-white px-6 py-3 rounded-lg font-semibold hover:from-[#0396d5] hover:to-[#027fb8] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 mt-4"
+                    >
+                      <Video className="w-5 h-5" />
+                      Join Video Meeting
+                    </button>
+                  )}
+
+                  {!meeting.meetingLink && (
+                    <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4 mt-4">
+                      <div className="flex items-start">
+                        <AlertCircle className="w-5 h-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="text-sm font-semibold text-yellow-900 mb-1">Meeting Link Not Available</h4>
+                          <p className="text-sm text-yellow-800">
+                            The video meeting link will be available shortly. Please check back closer to the meeting time.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

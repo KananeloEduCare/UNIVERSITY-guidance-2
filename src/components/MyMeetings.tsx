@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, MessageSquare, Filter } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, MessageSquare, Filter, Video } from 'lucide-react';
 
 interface MeetingRequest {
   id: string;
@@ -12,6 +12,7 @@ interface MeetingRequest {
   status: 'pending' | 'accepted' | 'rejected';
   rejectionReason?: string;
   requestedDate: string;
+  meetingLink?: string;
 }
 
 const MyMeetings: React.FC = () => {
@@ -27,7 +28,8 @@ const MyMeetings: React.FC = () => {
       time: '2:00 PM - 3:00 PM',
       agenda: 'I would like to discuss my college application strategy for Ivy League schools. I need guidance on how to make my application stand out.',
       status: 'accepted',
-      requestedDate: 'December 22, 2025'
+      requestedDate: 'December 22, 2025',
+      meetingLink: 'https://meet.jit.si/collegeadvisor-1'
     },
     {
       id: '2',
@@ -72,7 +74,8 @@ const MyMeetings: React.FC = () => {
       time: '9:00 AM - 10:00 AM',
       agenda: 'Interested in learning about the application timeline and key deadlines for top universities.',
       status: 'accepted',
-      requestedDate: 'December 21, 2025'
+      requestedDate: 'December 21, 2025',
+      meetingLink: 'https://meet.jit.si/collegeadvisor-5'
     }
   ];
 
@@ -291,17 +294,27 @@ const MyMeetings: React.FC = () => {
                 )}
 
                 {meeting.status === 'accepted' && (
-                  <div className="bg-green-50 border-l-4 border-green-500 rounded-lg p-4">
-                    <div className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <h4 className="text-sm font-semibold text-green-900 mb-1">Meeting Confirmed!</h4>
-                        <p className="text-sm text-green-800">
-                          Your meeting has been confirmed. A calendar invite will be sent to your email shortly.
-                          Please join at the scheduled time.
-                        </p>
+                  <div className="space-y-3">
+                    <div className="bg-green-50 border-l-4 border-green-500 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <h4 className="text-sm font-semibold text-green-900 mb-1">Meeting Confirmed!</h4>
+                          <p className="text-sm text-green-800">
+                            Your meeting has been confirmed. Click the button below to join the video call at the scheduled time.
+                          </p>
+                        </div>
                       </div>
                     </div>
+                    {meeting.meetingLink && (
+                      <button
+                        onClick={() => window.open(meeting.meetingLink, '_blank')}
+                        className="w-full bg-gradient-to-r from-[#04adee] to-[#0396d5] text-white px-6 py-3 rounded-lg font-semibold hover:from-[#0396d5] hover:to-[#027fb8] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <Video className="w-5 h-5" />
+                        Join Video Meeting
+                      </button>
+                    )}
                   </div>
                 )}
 

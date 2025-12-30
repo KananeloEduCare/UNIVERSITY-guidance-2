@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Plus, X } from 'lucide-react';
+import { Calendar, Clock, Plus, X, Video } from 'lucide-react';
 import { firebaseMeetingService, AvailabilitySlot, MeetingRequest } from '../services/firebaseMeetingService';
 
 interface MeetingRequestsProps {
@@ -174,10 +174,20 @@ export default function MeetingRequests({ counselorName }: MeetingRequestsProps)
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-lg p-4">
+                    <div className="bg-white rounded-lg p-4 mb-3">
                       <p className="text-sm font-medium text-gray-700 mb-2">Meeting Agenda:</p>
                       <p className="text-gray-600">{request.agenda}</p>
                     </div>
+
+                    {request.meetingLink && (
+                      <button
+                        onClick={() => window.open(request.meetingLink, '_blank')}
+                        className="w-full bg-gradient-to-r from-[#04adee] to-[#0396d5] text-white px-6 py-3 rounded-lg font-semibold hover:from-[#0396d5] hover:to-[#027fb8] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <Video className="w-5 h-5" />
+                        Join Video Meeting
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
