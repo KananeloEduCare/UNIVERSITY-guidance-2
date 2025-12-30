@@ -499,10 +499,9 @@ const EssayEditor: React.FC = () => {
           </div>
         )}
 
-        <div className={selectedEssay?.status === 'reviewed' && selectedEssay.reviewData ? "grid grid-cols-3 gap-6" : ""}>
+        <div>
           {selectedEssay ? (
-            <>
-            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${selectedEssay.status === 'reviewed' && selectedEssay.reviewData ? 'col-span-2' : ''}`}>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="border-b border-gray-200 p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-4">
@@ -563,24 +562,26 @@ const EssayEditor: React.FC = () => {
                       {selectedEssay.wordCount} words
                     </span>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleSave}
-                      disabled={selectedEssay.status === 'submitted'}
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-4 h-4" />
-                      Save Draft
-                    </button>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={selectedEssay.status === 'submitted' || selectedEssay.wordCount === 0}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Send className="w-4 h-4" />
-                      Submit for Review
-                    </button>
-                  </div>
+                  {selectedEssay.status !== 'reviewed' && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSave}
+                        disabled={selectedEssay.status === 'submitted'}
+                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Save className="w-4 h-4" />
+                        Save Draft
+                      </button>
+                      <button
+                        onClick={handleSubmit}
+                        disabled={selectedEssay.status === 'submitted' || selectedEssay.wordCount === 0}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Send className="w-4 h-4" />
+                        Submit for Review
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -625,14 +626,9 @@ const EssayEditor: React.FC = () => {
                 <div className="border-t border-gray-200 p-4 bg-blue-50">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm font-semibold text-blue-900">
-                        Essay Reviewed by {selectedEssay.reviewData.reviewedBy}
-                      </p>
-                      <p className="text-xs text-blue-700">
-                        Grade: {selectedEssay.reviewData.score}/{selectedEssay.reviewData.totalPoints} ({((selectedEssay.reviewData.score / selectedEssay.reviewData.totalPoints) * 100).toFixed(1)}%)
-                      </p>
-                    </div>
+                    <p className="text-sm font-semibold text-blue-900">
+                      Essay Reviewed by {selectedEssay.reviewData.reviewedBy}
+                    </p>
                   </div>
                 </div>
               )}
@@ -671,66 +667,6 @@ const EssayEditor: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {selectedEssay.status === 'reviewed' && selectedEssay.reviewData && (
-              <div className="space-y-4">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-amber-500" />
-                    Grade
-                  </h3>
-                  <div className="bg-gradient-to-r from-blue-50 to-emerald-50 rounded-lg p-4 border border-blue-200">
-                    <p className="text-2xl font-bold text-gray-900">
-                      {selectedEssay.reviewData.score}/{selectedEssay.reviewData.totalPoints}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {((selectedEssay.reviewData.score / selectedEssay.reviewData.totalPoints) * 100).toFixed(1)}%
-                    </p>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Reviewed on {new Date(selectedEssay.reviewData.reviewedAt).toLocaleDateString()}
-                  </p>
-                </div>
-
-                {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <p className="text-xs text-gray-700">
-                      <span className="font-semibold">{selectedEssay.reviewData.inlineComments.length} inline comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''}</span> highlighted. Click on highlighted text to view.
-                    </p>
-                  </div>
-                )}
-
-                {selectedEssay.reviewData.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-blue-600" />
-                      General Feedback
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedEssay.reviewData.generalComments.map((comment) => (
-                        <div
-                          key={comment.id}
-                          className="bg-gray-50 border border-gray-200 rounded-lg p-3"
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <p className="text-xs font-semibold text-gray-700">
-                              {comment.counselor_name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(comment.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <p className="text-xs text-gray-700 leading-relaxed">
-                            {comment.comment_text}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            </>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
               <div className="text-center text-gray-500">
@@ -743,6 +679,47 @@ const EssayEditor: React.FC = () => {
                   }
                 </p>
               </div>
+            </div>
+          )}
+
+          {selectedEssay?.status === 'reviewed' && selectedEssay.reviewData && (
+            <div className="mt-6">
+              {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">{selectedEssay.reviewData.inlineComments.length} inline comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''}</span> are highlighted in your essay. Click on the highlighted text to view each comment.
+                  </p>
+                </div>
+              )}
+
+              {selectedEssay.reviewData.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                    General Feedback
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedEssay.reviewData.generalComments.map((comment) => (
+                      <div
+                        key={comment.id}
+                        className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="text-sm font-semibold text-gray-700">
+                            {comment.counselor_name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {comment.comment_text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
