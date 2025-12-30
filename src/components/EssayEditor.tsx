@@ -123,8 +123,15 @@ const EssayEditor: React.FC = () => {
           key={`comment-${idx}`}
           className="bg-yellow-200 border-b-2 border-yellow-500 cursor-pointer hover:bg-yellow-300 transition-colors"
           onClick={(e) => {
+            e.stopPropagation();
             const rect = e.currentTarget.getBoundingClientRect();
-            setCommentPosition({ x: rect.left, y: rect.bottom + 5 });
+            const containerRect = e.currentTarget.closest('.essay-container')?.getBoundingClientRect();
+            if (containerRect) {
+              setCommentPosition({
+                x: containerRect.right + 20,
+                y: rect.top
+              });
+            }
             setActiveComment(comment);
           }}
         >
@@ -579,7 +586,7 @@ const EssayEditor: React.FC = () => {
 
               {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments ? (
                 <div
-                  className="p-8 min-h-[600px] relative"
+                  className="essay-container p-8 min-h-[600px] relative"
                   style={{
                     fontSize: `${selectedEssay.fontSize}pt`,
                     lineHeight: '1.75',
@@ -594,7 +601,7 @@ const EssayEditor: React.FC = () => {
                   ref={editorRef}
                   contentEditable={selectedEssay.status !== 'submitted' && selectedEssay.status !== 'reviewed'}
                   onInput={updateWordCount}
-                  className={`p-8 min-h-[600px] focus:outline-none ${
+                  className={`essay-container p-8 min-h-[600px] focus:outline-none ${
                     selectedEssay.status === 'submitted' || selectedEssay.status === 'reviewed' ? 'bg-gray-50 cursor-not-allowed' : ''
                   }`}
                   style={{
@@ -641,15 +648,14 @@ const EssayEditor: React.FC = () => {
 
               {activeComment && commentPosition && (
                 <div
-                  className="fixed bg-white border-2 border-yellow-500 rounded-lg shadow-2xl p-4 z-50 max-w-sm"
+                  className="fixed bg-white border-l-4 border-yellow-500 rounded-lg shadow-2xl p-4 z-50 w-80"
                   style={{
                     left: `${commentPosition.x}px`,
-                    top: `${commentPosition.y}px`,
-                    transform: 'translateX(-50%)'
+                    top: `${commentPosition.y}px`
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex justify-between items-start mb-2">
+                  <div className="flex justify-between items-start mb-3">
                     <p className="text-xs font-semibold text-gray-700">
                       {activeComment.counselor_name}
                     </p>
@@ -658,14 +664,14 @@ const EssayEditor: React.FC = () => {
                         setActiveComment(null);
                         setCommentPosition(null);
                       }}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 -mt-1 -mr-1"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
-                  <p className="text-xs text-gray-600 italic mb-2 bg-yellow-100 px-2 py-1 rounded">
+                  <p className="text-xs text-gray-600 italic mb-3 bg-yellow-50 px-2 py-1.5 rounded border border-yellow-200">
                     "{activeComment.highlighted_text}"
                   </p>
                   <p className="text-sm text-gray-800 leading-relaxed">
