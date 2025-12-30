@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bold, Italic, Underline, Save, Send, Plus, FileText, Edit2, Trash2, ChevronDown, List } from 'lucide-react';
+import { database } from '../config/firebase';
+import { ref, set, onValue, remove } from 'firebase/database';
+import { userStorage } from '../services/userStorage';
 
 interface Essay {
   id: string;
@@ -15,40 +18,18 @@ interface Essay {
 }
 
 const EssayEditor: React.FC = () => {
-  const [essays, setEssays] = useState<Essay[]>([
-    {
-      id: '1',
-      title: 'Common App Personal Statement',
-      type: 'personal_statement',
-      content: '<p>The first time I held a stethoscope, I was twelve years old...</p>',
-      wordCount: 487,
-      status: 'draft',
-      createdAt: '2024-12-15',
-      lastModified: '2024-12-23',
-      fontFamily: 'Arial',
-      fontSize: 14
-    },
-    {
-      id: '2',
-      title: 'Why Stanford?',
-      type: 'supplement',
-      content: '<p>Stanford\'s interdisciplinary approach to learning...</p>',
-      wordCount: 245,
-      status: 'draft',
-      createdAt: '2024-12-18',
-      lastModified: '2024-12-22',
-      fontFamily: 'Arial',
-      fontSize: 14
-    }
-  ]);
-
+  const [essays, setEssays] = useState<Essay[]>([]);
   const [showNewEssayForm, setShowNewEssayForm] = useState(false);
   const [selectedEssay, setSelectedEssay] = useState<Essay | null>(null);
   const [newEssayTitle, setNewEssayTitle] = useState('');
   const [newEssayType, setNewEssayType] = useState<'personal_statement' | 'supplement' | 'activity_list'>('personal_statement');
   const [showEssayList, setShowEssayList] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const editorRef = useRef<HTMLDivElement>(null);
+
+  const currentUser = userStorage.getStoredUser();
+  const studentName = currentUser?.name || 'Unknown Student';
 
   const fontFamilies = [
     'Arial',
@@ -110,11 +91,64 @@ const EssayEditor: React.FC = () => {
     }
   };
 
-  const handleCreateEssay = () => {
+  useEffect(() => {
+    const essaysRef = ref(database, `University Data/Essays/${studentName}`);
+
+    const unsubscribe = onValue(essaysRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setEssays([]);
+        setLoading(false);
+        return;
+      }
+
+      const essaysData: Essay[] = [];
+      const data = snapshot.val();
+
+      Object.keys(data).forEach((essayTitle) => {
+        const essayData = data[essayTitle];
+        essaysData.push({
+          id: essayTitle,
+          title: essayTitle,
+          type: essayData.essayType || 'personal_statement',
+          content: essayData.essayText || '',
+          wordCount: essayData.wordCount || 0,
+          status: essayData.status || 'draft',
+          createdAt: essayData.createdAt || new Date().toISOString().split('T')[0],
+          lastModified: essayData.lastModified || new Date().toISOString().split('T')[0],
+          fontFamily: essayData.fontFamily || 'Arial',
+          fontSize: essayData.fontSize || 14
+        });
+      });
+
+      essaysData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setEssays(essaysData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [studentName]);
+
+  const saveEssayToFirebase = async (essay: Essay) => {
+    const essayRef = ref(database, `University Data/Essays/${studentName}/${essay.title}`);
+
+    await set(essayRef, {
+      essayTitle: essay.title,
+      essayText: essay.content,
+      essayType: essay.type,
+      status: essay.status,
+      wordCount: essay.wordCount,
+      createdAt: essay.createdAt,
+      lastModified: essay.lastModified,
+      fontFamily: essay.fontFamily,
+      fontSize: essay.fontSize
+    });
+  };
+
+  const handleCreateEssay = async () => {
     if (!newEssayTitle.trim()) return;
 
     const newEssay: Essay = {
-      id: Date.now().toString(),
+      id: newEssayTitle,
       title: newEssayTitle,
       type: newEssayType,
       content: '',
@@ -126,57 +160,62 @@ const EssayEditor: React.FC = () => {
       fontSize: 14
     };
 
-    setEssays([newEssay, ...essays]);
+    await saveEssayToFirebase(newEssay);
     setSelectedEssay(newEssay);
     setShowNewEssayForm(false);
     setNewEssayTitle('');
     setNewEssayType('personal_statement');
   };
 
-  const handleFontFamilyChange = (fontFamily: string) => {
+  const handleFontFamilyChange = async (fontFamily: string) => {
     if (!selectedEssay) return;
     const updated = { ...selectedEssay, fontFamily };
     setSelectedEssay(updated);
-    setEssays(essays.map(e => e.id === selectedEssay.id ? updated : e));
+    await saveEssayToFirebase(updated);
   };
 
-  const handleFontSizeChange = (fontSize: number) => {
+  const handleFontSizeChange = async (fontSize: number) => {
     if (!selectedEssay) return;
     const updated = { ...selectedEssay, fontSize };
     setSelectedEssay(updated);
-    setEssays(essays.map(e => e.id === selectedEssay.id ? updated : e));
+    await saveEssayToFirebase(updated);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedEssay || !editorRef.current) return;
 
-    const updatedEssays = essays.map(essay =>
-      essay.id === selectedEssay.id
-        ? { ...selectedEssay, lastModified: new Date().toISOString().split('T')[0] }
-        : essay
-    );
-    setEssays(updatedEssays);
+    const updatedEssay = {
+      ...selectedEssay,
+      lastModified: new Date().toISOString().split('T')[0],
+      status: 'draft' as const
+    };
+
+    await saveEssayToFirebase(updatedEssay);
+    setSelectedEssay(updatedEssay);
 
     alert('Essay saved as draft!');
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedEssay) return;
 
-    const updatedEssays = essays.map(essay =>
-      essay.id === selectedEssay.id
-        ? { ...essay, status: 'submitted' as const, lastModified: new Date().toISOString().split('T')[0] }
-        : essay
-    );
-    setEssays(updatedEssays);
-    setSelectedEssay({ ...selectedEssay, status: 'submitted' });
+    const updatedEssay = {
+      ...selectedEssay,
+      status: 'submitted' as const,
+      lastModified: new Date().toISOString().split('T')[0]
+    };
+
+    await saveEssayToFirebase(updatedEssay);
+    setSelectedEssay(updatedEssay);
 
     alert('Essay submitted for review!');
   };
 
-  const handleDeleteEssay = (id: string) => {
+  const handleDeleteEssay = async (id: string) => {
     if (confirm('Are you sure you want to delete this essay?')) {
-      setEssays(essays.filter(essay => essay.id !== id));
+      const essayRef = ref(database, `University Data/Essays/${studentName}/${id}`);
+      await remove(essayRef);
+
       if (selectedEssay?.id === id) {
         setSelectedEssay(null);
       }
@@ -188,6 +227,14 @@ const EssayEditor: React.FC = () => {
       editorRef.current.innerHTML = selectedEssay.content;
     }
   }, [selectedEssay?.id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#04ADEE]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
