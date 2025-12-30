@@ -6,18 +6,18 @@ import { userStorage } from '../services/userStorage';
 
 interface InlineComment {
   id: string;
-  counselorName: string;
-  highlightedText: string;
-  startPosition: number;
-  endPosition: number;
-  commentText: string;
+  counselor_name: string;
+  highlighted_text: string;
+  start_position: number;
+  end_position: number;
+  comment_text: string;
 }
 
 interface GeneralComment {
   id: string;
-  counselorName: string;
-  commentText: string;
-  createdAt: string;
+  counselor_name: string;
+  comment_text: string;
+  created_at: string;
 }
 
 interface ReviewData {
@@ -52,6 +52,8 @@ const EssayEditor: React.FC = () => {
   const [showEssayList, setShowEssayList] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [activeComment, setActiveComment] = useState<InlineComment | null>(null);
+  const [commentPosition, setCommentPosition] = useState<{ x: number; y: number } | null>(null);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const essayContentRef = useRef<HTMLDivElement>(null);
@@ -98,6 +100,58 @@ const EssayEditor: React.FC = () => {
     }
   };
 
+  const renderEssayWithHighlights = (content: string, inlineComments: InlineComment[]) => {
+    if (!inlineComments || inlineComments.length === 0) {
+      return <div dangerouslySetInnerHTML={{ __html: content }} />;
+    }
+
+    const sortedComments = [...inlineComments].sort((a, b) => a.start_position - b.start_position);
+    const parts: JSX.Element[] = [];
+    let lastIndex = 0;
+
+    sortedComments.forEach((comment, idx) => {
+      if (comment.start_position > lastIndex) {
+        parts.push(
+          <span key={`text-${idx}`}>
+            {content.substring(lastIndex, comment.start_position)}
+          </span>
+        );
+      }
+
+      parts.push(
+        <span
+          key={`comment-${idx}`}
+          className="bg-yellow-200 border-b-2 border-yellow-500 cursor-pointer hover:bg-yellow-300 transition-colors"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setCommentPosition({ x: rect.left, y: rect.bottom + 5 });
+            setActiveComment(comment);
+          }}
+        >
+          {content.substring(comment.start_position, comment.end_position)}
+        </span>
+      );
+
+      lastIndex = comment.end_position;
+    });
+
+    if (lastIndex < content.length) {
+      parts.push(
+        <span key="text-end">
+          {content.substring(lastIndex)}
+        </span>
+      );
+    }
+
+    return <div>{parts}</div>;
+  };
+
+  const handleCommentClick = (comment: InlineComment, event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setCommentPosition({ x: rect.left, y: rect.bottom + 5 });
+    setActiveComment(comment);
+  };
+
   const countWords = (html: string) => {
     const text = html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ');
     const words = text.trim().split(/\s+/).filter(word => word.length > 0);
@@ -118,6 +172,20 @@ const EssayEditor: React.FC = () => {
       setSelectedEssay({ ...selectedEssay, content, wordCount });
     }
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (activeComment && commentPosition) {
+        setActiveComment(null);
+        setCommentPosition(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [activeComment, commentPosition]);
 
   useEffect(() => {
     const essaysRef = ref(database, `University Data/Essays/${studentName}`);
@@ -509,19 +577,33 @@ const EssayEditor: React.FC = () => {
                 </div>
               </div>
 
-              <div
-                ref={editorRef}
-                contentEditable={selectedEssay.status !== 'submitted'}
-                onInput={updateWordCount}
-                className={`p-8 min-h-[600px] focus:outline-none ${
-                  selectedEssay.status === 'submitted' ? 'bg-gray-50 cursor-not-allowed' : ''
-                }`}
-                style={{
-                  fontSize: `${selectedEssay.fontSize}pt`,
-                  lineHeight: '1.75',
-                  fontFamily: selectedEssay.fontFamily
-                }}
-              />
+              {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments ? (
+                <div
+                  className="p-8 min-h-[600px] relative"
+                  style={{
+                    fontSize: `${selectedEssay.fontSize}pt`,
+                    lineHeight: '1.75',
+                    fontFamily: selectedEssay.fontFamily,
+                    whiteSpace: 'pre-wrap'
+                  }}
+                >
+                  {renderEssayWithHighlights(selectedEssay.content, selectedEssay.reviewData.inlineComments)}
+                </div>
+              ) : (
+                <div
+                  ref={editorRef}
+                  contentEditable={selectedEssay.status !== 'submitted' && selectedEssay.status !== 'reviewed'}
+                  onInput={updateWordCount}
+                  className={`p-8 min-h-[600px] focus:outline-none ${
+                    selectedEssay.status === 'submitted' || selectedEssay.status === 'reviewed' ? 'bg-gray-50 cursor-not-allowed' : ''
+                  }`}
+                  style={{
+                    fontSize: `${selectedEssay.fontSize}pt`,
+                    lineHeight: '1.75',
+                    fontFamily: selectedEssay.fontFamily
+                  }}
+                />
+              )}
 
               {selectedEssay.status === 'submitted' && (
                 <div className="border-t border-gray-200 p-4 bg-green-50">
@@ -556,6 +638,41 @@ const EssayEditor: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {activeComment && commentPosition && (
+                <div
+                  className="fixed bg-white border-2 border-yellow-500 rounded-lg shadow-2xl p-4 z-50 max-w-sm"
+                  style={{
+                    left: `${commentPosition.x}px`,
+                    top: `${commentPosition.y}px`,
+                    transform: 'translateX(-50%)'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-xs font-semibold text-gray-700">
+                      {activeComment.counselor_name}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setActiveComment(null);
+                        setCommentPosition(null);
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-600 italic mb-2 bg-yellow-100 px-2 py-1 rounded">
+                    "{activeComment.highlighted_text}"
+                  </p>
+                  <p className="text-sm text-gray-800 leading-relaxed">
+                    {activeComment.comment_text}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
@@ -580,49 +697,33 @@ const EssayEditor: React.FC = () => {
               Counselor Feedback
             </h2>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-amber-500" />
-                  Grade
-                </h3>
-                <div className="bg-gradient-to-r from-blue-50 to-emerald-50 rounded-lg p-4 border border-blue-200">
-                  <p className="text-3xl font-bold text-gray-900">
-                    {selectedEssay.reviewData.score}/{selectedEssay.reviewData.totalPoints}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {((selectedEssay.reviewData.score / selectedEssay.reviewData.totalPoints) * 100).toFixed(1)}% • Reviewed on {new Date(selectedEssay.reviewData.reviewedAt).toLocaleDateString()}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-500" />
+                Grade
+              </h3>
+              <div className="bg-gradient-to-r from-blue-50 to-emerald-50 rounded-lg p-4 border border-blue-200">
+                <p className="text-3xl font-bold text-gray-900">
+                  {selectedEssay.reviewData.score}/{selectedEssay.reviewData.totalPoints}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {((selectedEssay.reviewData.score / selectedEssay.reviewData.totalPoints) * 100).toFixed(1)}% • Reviewed on {new Date(selectedEssay.reviewData.reviewedAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
+              <div className="mb-6">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">{selectedEssay.reviewData.inlineComments.length} inline comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''}</span> are highlighted in your essay above. Click on the highlighted text to view each comment.
                   </p>
                 </div>
               </div>
-
-              {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                    Inline Comments ({selectedEssay.reviewData.inlineComments.length})
-                  </h3>
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {selectedEssay.reviewData.inlineComments.map((comment) => (
-                      <div
-                        key={comment.id}
-                        className="bg-yellow-50 border border-yellow-200 rounded-lg p-3"
-                      >
-                        <p className="text-xs font-semibold text-gray-700 mb-1">
-                          {comment.counselorName}
-                        </p>
-                        <p className="text-xs text-gray-600 italic mb-2">
-                          "{comment.highlightedText}"
-                        </p>
-                        <p className="text-xs text-gray-700">{comment.commentText}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             {selectedEssay.reviewData.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
-              <div className="mt-6">
+              <div>
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">
                   General Feedback
                 </h3>
@@ -634,14 +735,14 @@ const EssayEditor: React.FC = () => {
                     >
                       <div className="flex justify-between items-start mb-2">
                         <p className="text-sm font-semibold text-gray-700">
-                          {comment.counselorName}
+                          {comment.counselor_name}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {new Date(comment.createdAt).toLocaleDateString()}
+                          {new Date(comment.created_at).toLocaleDateString()}
                         </p>
                       </div>
                       <p className="text-sm text-gray-700 leading-relaxed">
-                        {comment.commentText}
+                        {comment.comment_text}
                       </p>
                     </div>
                   ))}
