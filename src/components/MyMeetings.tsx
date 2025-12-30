@@ -29,7 +29,7 @@ const MyMeetings: React.FC = () => {
       agenda: 'I would like to discuss my college application strategy for Ivy League schools. I need guidance on how to make my application stand out.',
       status: 'accepted',
       requestedDate: 'December 22, 2025',
-      meetingLink: 'https://meet.jit.si/collegeadvisor-1'
+      meetingLink: 'https://meet.jit.si/educare-meeting-1'
     },
     {
       id: '2',
@@ -75,7 +75,7 @@ const MyMeetings: React.FC = () => {
       agenda: 'Interested in learning about the application timeline and key deadlines for top universities.',
       status: 'accepted',
       requestedDate: 'December 21, 2025',
-      meetingLink: 'https://meet.jit.si/collegeadvisor-5'
+      meetingLink: 'https://meet.jit.si/educare-meeting-5'
     }
   ];
 

@@ -172,7 +172,7 @@ export const firebaseMeetingService = {
   },
 
   generateMeetingLink(meetingId: string): string {
-    return `https://meet.jit.si/collegeadvisor-${meetingId}`;
+    return `https://meet.jit.si/educare-meeting-${meetingId}`;
   },
 
   async updateMeetingLink(counselorName: string, meetingId: string, meetingLink: string): Promise<void> {

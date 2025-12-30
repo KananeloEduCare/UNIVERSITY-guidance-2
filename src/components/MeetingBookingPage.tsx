@@ -105,7 +105,7 @@ const MeetingBookingPage: React.FC<MeetingBookingPageProps> = ({
       const requestedAt = new Date().toISOString();
 
       const meetingId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const meetingLink = `https://meet.jit.si/collegeadvisor-${meetingId}`;
+      const meetingLink = `https://meet.jit.si/educare-meeting-${meetingId}`;
 
       const timeslotPath = `University Data/Timeslots/${counselorName}/${selectedSlot.rawKey}`;
       const timeslotRef = ref(database, timeslotPath);
