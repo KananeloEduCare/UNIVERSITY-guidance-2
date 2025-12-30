@@ -1,8 +1,33 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bold, Italic, Underline, Save, Send, Plus, FileText, Edit2, Trash2, ChevronDown, List } from 'lucide-react';
+import { Bold, Italic, Underline, Save, Send, Plus, FileText, Edit2, Trash2, ChevronDown, List, CheckCircle, MessageSquare, Star } from 'lucide-react';
 import { database } from '../config/firebase';
 import { ref, set, onValue, remove } from 'firebase/database';
 import { userStorage } from '../services/userStorage';
+
+interface InlineComment {
+  id: string;
+  counselorName: string;
+  highlightedText: string;
+  startPosition: number;
+  endPosition: number;
+  commentText: string;
+}
+
+interface GeneralComment {
+  id: string;
+  counselorName: string;
+  commentText: string;
+  createdAt: string;
+}
+
+interface ReviewData {
+  reviewedBy: string;
+  reviewedAt: string;
+  totalPoints: number;
+  score: number;
+  inlineComments: InlineComment[];
+  generalComments: GeneralComment[];
+}
 
 interface Essay {
   id: string;
@@ -10,11 +35,12 @@ interface Essay {
   type: 'personal_statement' | 'supplement' | 'activity_list';
   content: string;
   wordCount: number;
-  status: 'draft' | 'submitted';
+  status: 'draft' | 'submitted' | 'reviewed';
   createdAt: string;
   lastModified: string;
   fontFamily: string;
   fontSize: number;
+  reviewData?: ReviewData;
 }
 
 const EssayEditor: React.FC = () => {
@@ -25,8 +51,10 @@ const EssayEditor: React.FC = () => {
   const [newEssayType, setNewEssayType] = useState<'personal_statement' | 'supplement' | 'activity_list'>('personal_statement');
   const [showEssayList, setShowEssayList] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const essayContentRef = useRef<HTMLDivElement>(null);
 
   const currentUser = userStorage.getStoredUser();
   const studentName = currentUser?.name || 'Unknown Student';
@@ -116,7 +144,8 @@ const EssayEditor: React.FC = () => {
           createdAt: essayData.createdAt || new Date().toISOString().split('T')[0],
           lastModified: essayData.lastModified || new Date().toISOString().split('T')[0],
           fontFamily: essayData.fontFamily || 'Arial',
-          fontSize: essayData.fontSize || 14
+          fontSize: essayData.fontSize || 14,
+          reviewData: essayData.reviewData || undefined
         });
       });
 
@@ -140,7 +169,8 @@ const EssayEditor: React.FC = () => {
       createdAt: essay.createdAt,
       lastModified: essay.lastModified,
       fontFamily: essay.fontFamily,
-      fontSize: essay.fontSize
+      fontSize: essay.fontSize,
+      reviewData: essay.reviewData || null
     });
   };
 
@@ -325,6 +355,12 @@ const EssayEditor: React.FC = () => {
                           Submitted
                         </span>
                       )}
+                      {selectedEssay.status === 'reviewed' && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Reviewed
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <span className="text-gray-600">Select an essay to edit</span>
@@ -352,6 +388,12 @@ const EssayEditor: React.FC = () => {
                           {essay.status === 'submitted' && (
                             <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
                               Submitted
+                            </span>
+                          )}
+                          {essay.status === 'reviewed' && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Reviewed
                             </span>
                           )}
                           {selectedEssay?.id === essay.id && (
@@ -489,6 +531,31 @@ const EssayEditor: React.FC = () => {
                   </p>
                 </div>
               )}
+
+              {selectedEssay.status === 'reviewed' && selectedEssay.reviewData && (
+                <div className="border-t border-gray-200 p-4 bg-blue-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900">
+                          Essay Reviewed by {selectedEssay.reviewData.reviewedBy}
+                        </p>
+                        <p className="text-xs text-blue-700">
+                          Grade: {selectedEssay.reviewData.score}/{selectedEssay.reviewData.totalPoints} ({((selectedEssay.reviewData.score / selectedEssay.reviewData.totalPoints) * 100).toFixed(1)}%)
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowFeedback(!showFeedback)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      {showFeedback ? 'Hide' : 'View'} Feedback
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
@@ -505,6 +572,84 @@ const EssayEditor: React.FC = () => {
             </div>
           )}
         </div>
+
+        {showFeedback && selectedEssay?.status === 'reviewed' && selectedEssay.reviewData && (
+          <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-blue-600" />
+              Counselor Feedback
+            </h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-500" />
+                  Grade
+                </h3>
+                <div className="bg-gradient-to-r from-blue-50 to-emerald-50 rounded-lg p-4 border border-blue-200">
+                  <p className="text-3xl font-bold text-gray-900">
+                    {selectedEssay.reviewData.score}/{selectedEssay.reviewData.totalPoints}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {((selectedEssay.reviewData.score / selectedEssay.reviewData.totalPoints) * 100).toFixed(1)}% • Reviewed on {new Date(selectedEssay.reviewData.reviewedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                    Inline Comments ({selectedEssay.reviewData.inlineComments.length})
+                  </h3>
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {selectedEssay.reviewData.inlineComments.map((comment) => (
+                      <div
+                        key={comment.id}
+                        className="bg-yellow-50 border border-yellow-200 rounded-lg p-3"
+                      >
+                        <p className="text-xs font-semibold text-gray-700 mb-1">
+                          {comment.counselorName}
+                        </p>
+                        <p className="text-xs text-gray-600 italic mb-2">
+                          "{comment.highlightedText}"
+                        </p>
+                        <p className="text-xs text-gray-700">{comment.commentText}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {selectedEssay.reviewData.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                  General Feedback
+                </h3>
+                <div className="space-y-3">
+                  {selectedEssay.reviewData.generalComments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-sm font-semibold text-gray-700">
+                          {comment.counselorName}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {comment.commentText}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

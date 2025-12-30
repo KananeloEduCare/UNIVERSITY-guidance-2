@@ -1,17 +1,22 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FileText, ArrowLeft, MessageSquare, Send, X, Check, Clock, AlertCircle, Star } from 'lucide-react';
+import { database } from '../config/firebase';
+import { ref, onValue, set } from 'firebase/database';
+import { userStorage } from '../services/userStorage';
 
 interface Essay {
   id: string;
   student_name: string;
-  essay_type: 'personal_statement' | 'supplementary';
+  essay_type: 'personal_statement' | 'supplement' | 'activity_list';
   essay_title: string;
   essay_content: string;
   university_name: string | null;
   submission_date: string;
-  status: 'pending' | 'in_review' | 'reviewed';
+  status: 'draft' | 'submitted' | 'reviewed';
   total_points: number | null;
   score: number | null;
+  font_family: string;
+  font_size: number;
 }
 
 interface InlineComment {
@@ -30,83 +35,9 @@ interface GeneralComment {
   created_at: string;
 }
 
-const DUMMY_ESSAYS: Essay[] = [
-  {
-    id: '1',
-    student_name: 'Emma Thompson',
-    essay_type: 'personal_statement',
-    essay_title: 'Common App Personal Statement',
-    essay_content: `Growing up in a small coastal town, I spent my childhood exploring tide pools and marveling at the intricate ecosystems hidden beneath the waves. My fascination with marine life began when I was eight years old, during a family vacation to the Florida Keys. I remember pressing my face against the glass of an aquarium, watching a sea turtle glide gracefully through the water, and feeling an overwhelming sense of connection to the ocean and its inhabitants.
-
-This early wonder transformed into a serious academic pursuit during my sophomore year of high school. When our biology teacher announced a research project on local environmental issues, I immediately knew I wanted to study the impact of pollution on our town's marine ecosystem. What started as a simple class assignment evolved into a year-long investigation that would fundamentally change my understanding of environmental science and my role as a future researcher.
-
-I began by collecting water samples from different points along our coastline, testing for pollutants and documenting changes in marine life populations. The data I gathered was alarming. Over the past decade, our local fish populations had declined by nearly 40%, and the coral reefs that once thrived just offshore were showing signs of severe bleaching. I knew I had to do more than just document these changes; I needed to take action.
-
-With support from my biology teacher and the local marine biology lab, I organized a community beach cleanup initiative and launched an educational campaign in our town. I created informational brochures, gave presentations at town hall meetings, and even started a youth environmental club at my school. The response was overwhelming. Within six months, we had recruited over 200 volunteers and removed more than 3,000 pounds of trash from our beaches.
-
-But the most rewarding moment came when I returned to collect follow-up water samples and discovered that the water quality had measurably improved. Small changes were occurring in the ecosystem. I had learned that scientific research isn't just about observation and data collection; it's about using that knowledge to create meaningful change in the world.
-
-This experience has shaped my academic goals and career aspirations. I want to pursue a degree in marine biology and environmental science, focusing on conservation and sustainable practices. I envision a future where I can contribute to the restoration of damaged marine ecosystems and develop innovative solutions to combat climate change's effects on our oceans.
-
-The ocean that captivated me as a child continues to inspire me today, but now my wonder is coupled with purpose. I understand that protecting our planet's marine environments requires dedication, scientific rigor, and community engagement. I am ready to dive deeper into this field, to learn from leading researchers, and to contribute my passion and skills to preserving the underwater worlds that sparked my curiosity so many years ago.`,
-    university_name: null,
-    submission_date: '2024-03-10',
-    status: 'pending',
-    total_points: null,
-    score: null,
-  },
-  {
-    id: '2',
-    student_name: 'James Mitchell',
-    essay_type: 'personal_statement',
-    essay_title: 'Common App Personal Statement',
-    essay_content: `The rhythmic clacking of my keyboard has become the soundtrack to my life. At 2 AM, when most of my peers are asleep, I'm wide awake, debugging code and building applications that I hope will make a difference. Some might call this obsession unhealthy, but I call it passion. Programming isn't just a hobby for me; it's a language through which I express creativity, solve problems, and connect with others.
-
-My journey into computer science began unexpectedly. Three years ago, my grandmother was diagnosed with early-onset Alzheimer's disease. Watching her struggle to remember faces, names, and daily tasks was heartbreaking. I felt helpless, unable to do anything meaningful to support her or my family during this difficult time. That helplessness transformed into determination when I discovered that technology could potentially help individuals with cognitive impairments maintain their independence and quality of life.
-
-I taught myself Python through online courses and spent months researching memory assistance technologies. My goal was ambitious: to create a mobile application that could help my grandmother navigate her daily routine, recognize family members, and maintain important memories. I called it "MemoryKeeper."
-
-The development process was challenging. I had to learn not only programming but also user interface design, database management, and the psychological aspects of memory loss. I consulted with my grandmother's neurologist, interviewed other families affected by Alzheimer's, and conducted extensive user testing with elderly volunteers from a local community center.
-
-The final application included features like facial recognition for family members, voice-activated reminders for medications and appointments, and a digital memory book where family members could share photos and stories. When I finally presented the completed app to my grandmother, her reaction was everything I had hoped for. The joy on her face when the app helped her remember my cousin's name brought tears to my eyes.
-
-What started as a personal project has evolved into something much larger. I've since refined MemoryKeeper, incorporating feedback from healthcare professionals and families. The app is now being beta-tested at three assisted living facilities in our region, and I've received interest from healthcare organizations about potential partnerships.
-
-This experience taught me that the most meaningful applications of technology are those that address real human needs. It's not about creating the flashiest or most complex software; it's about understanding people's struggles and using technical skills to improve their lives in tangible ways.
-
-As I look toward college and beyond, I'm excited to deepen my understanding of computer science, particularly in areas like artificial intelligence, human-computer interaction, and healthcare technology. I want to work at the intersection of technology and healthcare, developing innovative solutions that can help vulnerable populations live fuller, more independent lives.
-
-My grandmother once told me that memories are what make us who we are. Through programming, I've found a way to help people hold onto those precious memories just a little bit longer. That's a mission worth staying up until 2 AM for.`,
-    university_name: null,
-    submission_date: '2024-03-08',
-    status: 'reviewed',
-    total_points: 100,
-    score: 92,
-  },
-  {
-    id: '3',
-    student_name: 'Sarah Chen',
-    essay_type: 'supplementary',
-    essay_title: 'Why Stanford Engineering?',
-    essay_content: `Stanford's commitment to innovation and interdisciplinary collaboration aligns perfectly with my aspirations as an aspiring biomedical engineer. The opportunity to work in the Bio-X program, where I could collaborate with researchers from medicine, engineering, and biology, represents exactly the kind of integrated approach I believe is necessary for solving complex healthcare challenges.
-
-During my high school years, I've been particularly interested in developing affordable medical devices for underserved communities. I founded a nonprofit organization that designs and distributes low-cost prosthetics to children in developing countries. This experience showed me that the best engineering solutions aren't always the most technologically advanced; they're the ones that are accessible, sustainable, and designed with the end user in mind.
-
-At Stanford, I'm excited to take courses like "Design for Extreme Affordability" and participate in the Global Development and Poverty Initiative. I want to learn from professors like Dr. James Landay, whose work on mobile health applications fascinates me. The chance to contribute to Stanford's culture of innovation while staying grounded in social impact is incredibly inspiring.
-
-Beyond academics, I'm drawn to Stanford's collaborative and entrepreneurial spirit. I hope to join organizations like Stanford IEEE and potentially start my own venture through StartX. The university's location in Silicon Valley would provide unparalleled opportunities for internships and mentorship from industry leaders.
-
-Most importantly, I believe Stanford would challenge me to think bigger and reach further than I ever thought possible. I want to be surrounded by peers who are as passionate about using engineering to create positive change in the world.`,
-    university_name: 'Stanford University',
-    submission_date: '2024-03-12',
-    status: 'pending',
-    total_points: null,
-    score: null,
-  },
-];
-
 const EssayReview: React.FC = () => {
-  const [essays, setEssays] = useState<Essay[]>(DUMMY_ESSAYS);
+  const [essays, setEssays] = useState<Essay[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedEssay, setSelectedEssay] = useState<Essay | null>(null);
   const [inlineComments, setInlineComments] = useState<InlineComment[]>([]);
   const [generalComments, setGeneralComments] = useState<GeneralComment[]>([]);
@@ -123,20 +54,92 @@ const EssayReview: React.FC = () => {
   const [showGradeModal, setShowGradeModal] = useState(false);
   const essayContentRef = useRef<HTMLDivElement>(null);
 
-  const handleEssayClick = (essayId: string) => {
+  const currentUser = userStorage.getStoredUser();
+  const counselorName = currentUser?.name || 'University Counselor';
+
+  useEffect(() => {
+    const essaysRef = ref(database, 'University Data/Essays');
+
+    const unsubscribe = onValue(essaysRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setEssays([]);
+        setLoading(false);
+        return;
+      }
+
+      const essaysData: Essay[] = [];
+      const data = snapshot.val();
+
+      Object.keys(data).forEach((studentName) => {
+        const studentEssays = data[studentName];
+
+        Object.keys(studentEssays).forEach((essayTitle) => {
+          const essayData = studentEssays[essayTitle];
+
+          if (essayData.status === 'submitted' || essayData.status === 'reviewed') {
+            essaysData.push({
+              id: `${studentName}___${essayTitle}`,
+              student_name: studentName,
+              essay_type: essayData.essayType || 'personal_statement',
+              essay_title: essayTitle,
+              essay_content: essayData.essayText || '',
+              university_name: null,
+              submission_date: essayData.lastModified || new Date().toISOString().split('T')[0],
+              status: essayData.status || 'submitted',
+              total_points: essayData.reviewData?.totalPoints || null,
+              score: essayData.reviewData?.score || null,
+              font_family: essayData.fontFamily || 'Arial',
+              font_size: essayData.fontSize || 14
+            });
+          }
+        });
+      });
+
+      essaysData.sort((a, b) => new Date(b.submission_date).getTime() - new Date(a.submission_date).getTime());
+      setEssays(essaysData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (selectedEssay && selectedEssay.status === 'reviewed') {
+      const [studentName, essayTitle] = selectedEssay.id.split('___');
+      const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
+
+      onValue(essayRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const essayData = snapshot.val();
+          if (essayData.reviewData) {
+            setInlineComments(essayData.reviewData.inlineComments || []);
+            setGeneralComments(essayData.reviewData.generalComments || []);
+          }
+        }
+      });
+    }
+  }, [selectedEssay?.id, selectedEssay?.status]);
+
+  const handleEssayClick = async (essayId: string) => {
     const essay = essays.find(e => e.id === essayId);
     if (essay) {
       setSelectedEssay(essay);
-      setInlineComments([]);
-      setGeneralComments([]);
 
-      if (essay.status === 'pending') {
-        const updatedEssays = essays.map(e =>
-          e.id === essayId ? { ...e, status: 'in_review' as const } : e
-        );
-        setEssays(updatedEssays);
-        setSelectedEssay({ ...essay, status: 'in_review' });
-      }
+      const [studentName, essayTitle] = essayId.split('___');
+      const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
+
+      onValue(essayRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const essayData = snapshot.val();
+          if (essayData.reviewData) {
+            setInlineComments(essayData.reviewData.inlineComments || []);
+            setGeneralComments(essayData.reviewData.generalComments || []);
+          } else {
+            setInlineComments([]);
+            setGeneralComments([]);
+          }
+        }
+      });
     }
   };
 
@@ -160,38 +163,99 @@ const EssayReview: React.FC = () => {
     }
   };
 
-  const handleAddInlineComment = () => {
+  const handleAddInlineComment = async () => {
     if (!selectedEssay || !selectedText || !commentInput.trim()) return;
 
     const newComment: InlineComment = {
       id: Date.now().toString(),
-      counselor_name: 'Dr. Sarah Johnson',
+      counselor_name: counselorName,
       highlighted_text: selectedText.text,
       start_position: selectedText.start,
       end_position: selectedText.end,
       comment_text: commentInput,
     };
 
-    setInlineComments([...inlineComments, newComment]);
+    const updatedComments = [...inlineComments, newComment];
+    setInlineComments(updatedComments);
+
+    const [studentName, essayTitle] = selectedEssay.id.split('___');
+    const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
+
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(essayRef, (snap) => resolve(snap), { onlyOnce: true });
+    });
+
+    if (snapshot.exists()) {
+      const essayData = snapshot.val();
+      await set(essayRef, {
+        ...essayData,
+        reviewData: {
+          ...essayData.reviewData,
+          inlineComments: updatedComments
+        }
+      });
+    }
+
     setCommentInput('');
     setSelectedText(null);
   };
 
-  const handleDeleteInlineComment = (commentId: string) => {
-    setInlineComments(inlineComments.filter(c => c.id !== commentId));
+  const handleDeleteInlineComment = async (commentId: string) => {
+    if (!selectedEssay) return;
+
+    const updatedComments = inlineComments.filter(c => c.id !== commentId);
+    setInlineComments(updatedComments);
+
+    const [studentName, essayTitle] = selectedEssay.id.split('___');
+    const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
+
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(essayRef, (snap) => resolve(snap), { onlyOnce: true });
+    });
+
+    if (snapshot.exists()) {
+      const essayData = snapshot.val();
+      await set(essayRef, {
+        ...essayData,
+        reviewData: {
+          ...essayData.reviewData,
+          inlineComments: updatedComments
+        }
+      });
+    }
   };
 
-  const handleAddGeneralComment = () => {
+  const handleAddGeneralComment = async () => {
     if (!selectedEssay || !generalCommentInput.trim()) return;
 
     const newComment: GeneralComment = {
       id: Date.now().toString(),
-      counselor_name: 'Dr. Sarah Johnson',
+      counselor_name: counselorName,
       comment_text: generalCommentInput,
       created_at: new Date().toISOString(),
     };
 
-    setGeneralComments([newComment, ...generalComments]);
+    const updatedComments = [newComment, ...generalComments];
+    setGeneralComments(updatedComments);
+
+    const [studentName, essayTitle] = selectedEssay.id.split('___');
+    const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
+
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(essayRef, (snap) => resolve(snap), { onlyOnce: true });
+    });
+
+    if (snapshot.exists()) {
+      const essayData = snapshot.val();
+      await set(essayRef, {
+        ...essayData,
+        reviewData: {
+          ...essayData.reviewData,
+          generalComments: updatedComments
+        }
+      });
+    }
+
     setGeneralCommentInput('');
   };
 
@@ -200,7 +264,7 @@ const EssayReview: React.FC = () => {
     setShowGradeModal(true);
   };
 
-  const handleSaveGrade = () => {
+  const handleSaveGrade = async () => {
     if (!selectedEssay) return;
 
     const totalPoints = parseInt(totalPointsInput);
@@ -219,6 +283,30 @@ const EssayReview: React.FC = () => {
     if (score > totalPoints) {
       alert('Score cannot exceed total points');
       return;
+    }
+
+    const [studentName, essayTitle] = selectedEssay.id.split('___');
+    const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
+
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(essayRef, (snap) => resolve(snap), { onlyOnce: true });
+    });
+
+    if (snapshot.exists()) {
+      const essayData = snapshot.val();
+      await set(essayRef, {
+        ...essayData,
+        status: 'reviewed',
+        reviewData: {
+          ...essayData.reviewData,
+          reviewedBy: counselorName,
+          reviewedAt: new Date().toISOString(),
+          totalPoints,
+          score,
+          inlineComments: inlineComments || [],
+          generalComments: generalComments || []
+        }
+      });
     }
 
     const updatedEssays = essays.map(e =>
@@ -319,18 +407,11 @@ const EssayReview: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'submitted':
         return (
           <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
             <Clock className="w-3.5 h-3.5" />
-            <span className="text-xs font-semibold">Pending</span>
-          </div>
-        );
-      case 'in_review':
-        return (
-          <div className="flex items-center gap-1.5 bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
-            <AlertCircle className="w-3.5 h-3.5" />
-            <span className="text-xs font-semibold">In Review</span>
+            <span className="text-xs font-semibold">Submitted</span>
           </div>
         );
       case 'reviewed':
@@ -347,12 +428,21 @@ const EssayReview: React.FC = () => {
 
   const filteredEssays = filter === 'all'
     ? essays
+    : filter === 'pending'
+    ? essays.filter(e => e.status === 'submitted')
     : essays.filter(e => e.status === filter);
 
-  const pendingCount = essays.filter(e => e.status === 'pending').length;
-  const inReviewCount = essays.filter(e => e.status === 'in_review').length;
+  const submittedCount = essays.filter(e => e.status === 'submitted').length;
   const reviewedCount = essays.filter(e => e.status === 'reviewed').length;
   const reviewProgress = calculateReviewProgress();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#04ADEE]"></div>
+      </div>
+    );
+  }
 
   if (selectedEssay) {
     return (
@@ -369,7 +459,7 @@ const EssayReview: React.FC = () => {
             <div className="flex-1">
               <h2 className="text-xl font-bold text-slate-900 mb-1">{selectedEssay.essay_title}</h2>
               <p className="text-sm text-slate-600">
-                {selectedEssay.student_name} • {selectedEssay.essay_type === 'personal_statement' ? 'Personal Statement' : 'Supplementary Essay'}
+                {selectedEssay.student_name} • {selectedEssay.essay_type === 'personal_statement' ? 'Personal Statement' : selectedEssay.essay_type === 'supplement' ? 'Supplemental Essay' : 'Activity List'}
                 {selectedEssay.university_name && ` • ${selectedEssay.university_name}`}
               </p>
               {selectedEssay.status === 'reviewed' && selectedEssay.total_points && selectedEssay.score !== null && (
@@ -605,21 +695,13 @@ const EssayReview: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900">Essay Review</h1>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-slate-600">Unreviewed</span>
+              <span className="text-xs font-medium text-slate-600">Pending Review</span>
               <Clock className="w-4 h-4 text-amber-500" />
             </div>
-            <p className="text-2xl font-bold text-slate-900">{pendingCount}</p>
-          </div>
-
-          <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-slate-600">In Review</span>
-              <AlertCircle className="w-4 h-4 text-blue-500" />
-            </div>
-            <p className="text-2xl font-bold text-slate-900">{inReviewCount}</p>
+            <p className="text-2xl font-bold text-slate-900">{submittedCount}</p>
           </div>
 
           <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
@@ -658,17 +740,7 @@ const EssayReview: React.FC = () => {
                 : 'bg-white text-slate-700 hover:bg-slate-100'
             }`}
           >
-            Pending ({pendingCount})
-          </button>
-          <button
-            onClick={() => setFilter('in_review')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-              filter === 'in_review'
-                ? 'bg-[#04ADEE] text-white'
-                : 'bg-white text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            In Review ({inReviewCount})
+            Pending Review ({submittedCount})
           </button>
           <button
             onClick={() => setFilter('reviewed')}
@@ -704,7 +776,7 @@ const EssayReview: React.FC = () => {
                       {essay.essay_title}
                     </h3>
                     <p className="text-sm text-slate-600">
-                      {essay.student_name} • {essay.essay_type === 'personal_statement' ? 'Personal Statement' : 'Supplementary Essay'}
+                      {essay.student_name} • {essay.essay_type === 'personal_statement' ? 'Personal Statement' : essay.essay_type === 'supplement' ? 'Supplemental Essay' : 'Activity List'}
                       {essay.university_name && ` • ${essay.university_name}`}
                     </p>
                   </div>
