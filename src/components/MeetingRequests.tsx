@@ -1,14 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Plus, X, Video } from 'lucide-react';
-import { firebaseMeetingService, AvailabilitySlot, MeetingRequest } from '../services/firebaseMeetingService';
+import { firebaseMeetingService, AvailabilitySlot } from '../services/firebaseMeetingService';
+import { database } from '../config/firebase';
+import { ref, onValue } from 'firebase/database';
 
 interface MeetingRequestsProps {
   counselorId: string;
   counselorName: string;
 }
 
+interface UpcomingMeeting {
+  id: string;
+  studentName: string;
+  studentEmail: string;
+  date: string;
+  time: string;
+  agenda: string;
+  meetingLink: string;
+  requestedAt: string;
+}
+
 export default function MeetingRequests({ counselorName }: MeetingRequestsProps) {
-  const [meetingRequests, setMeetingRequests] = useState<MeetingRequest[]>([]);
+  const [upcomingMeetings, setUpcomingMeetings] = useState<UpcomingMeeting[]>([]);
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'availability'>('upcoming');
@@ -20,8 +33,6 @@ export default function MeetingRequests({ counselorName }: MeetingRequestsProps)
     endTime: '',
   });
 
-  const upcomingMeetings = meetingRequests.filter(r => r.status === 'accepted');
-
   useEffect(() => {
     const unsubscribeAvailability = firebaseMeetingService.listenToCounselorAvailability(
       counselorName,
@@ -31,12 +42,39 @@ export default function MeetingRequests({ counselorName }: MeetingRequestsProps)
       }
     );
 
-    const unsubscribeMeetings = firebaseMeetingService.listenToMeetingRequests(
-      counselorName,
-      (requests) => {
-        setMeetingRequests(requests.filter(r => r.status !== 'rejected'));
+    const upcomingMeetingsRef = ref(database, `Upcoming meetings/${counselorName}`);
+    const unsubscribeMeetings = onValue(upcomingMeetingsRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setUpcomingMeetings([]);
+        return;
       }
-    );
+
+      const meetings: UpcomingMeeting[] = [];
+      const data = snapshot.val();
+
+      Object.keys(data).forEach((studentName) => {
+        const studentMeetings = data[studentName];
+
+        Object.keys(studentMeetings).forEach((slotKey) => {
+          const meeting = studentMeetings[slotKey];
+          const [date, timeRange] = slotKey.split('_');
+
+          meetings.push({
+            id: slotKey,
+            studentName,
+            studentEmail: meeting.studentEmail || '',
+            date,
+            time: timeRange,
+            agenda: meeting.agenda || 'No agenda provided',
+            meetingLink: meeting.meetingLink || '',
+            requestedAt: meeting.requestedAt || ''
+          });
+        });
+      });
+
+      meetings.sort((a, b) => a.date.localeCompare(b.date));
+      setUpcomingMeetings(meetings);
+    });
 
     return () => {
       unsubscribeAvailability();
@@ -144,44 +182,44 @@ export default function MeetingRequests({ counselorName }: MeetingRequestsProps)
               </div>
             ) : (
               <div className="space-y-4">
-                {upcomingMeetings.map((request) => (
+                {upcomingMeetings.map((meeting) => (
                   <div
-                    key={request.id}
+                    key={meeting.id}
                     className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-green-50/50"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-lg font-semibold text-gray-900">
-                            {request.studentName || 'Unknown Student'}
+                            {meeting.studentName || 'Unknown Student'}
                           </h3>
                           <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             Confirmed
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600">{request.studentEmail}</p>
+                        <p className="text-sm text-gray-600">{meeting.studentEmail}</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-6 mb-4 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4" />
-                        {formatDate(request.requestedDate)}
+                        {formatDate(meeting.date)}
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
-                        {formatTime(request.requestedTime)}
+                        {meeting.time}
                       </div>
                     </div>
 
                     <div className="bg-white rounded-lg p-4 mb-3">
                       <p className="text-sm font-medium text-gray-700 mb-2">Meeting Agenda:</p>
-                      <p className="text-gray-600">{request.agenda}</p>
+                      <p className="text-gray-600">{meeting.agenda}</p>
                     </div>
 
-                    {request.meetingLink && (
+                    {meeting.meetingLink && (
                       <button
-                        onClick={() => window.open(request.meetingLink, '_blank')}
+                        onClick={() => window.open(meeting.meetingLink, '_blank')}
                         className="w-full bg-gradient-to-r from-[#04adee] to-[#0396d5] text-white px-6 py-3 rounded-lg font-semibold hover:from-[#0396d5] hover:to-[#027fb8] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                       >
                         <Video className="w-5 h-5" />
