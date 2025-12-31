@@ -11,6 +11,7 @@ interface InlineComment {
   start_position: number;
   end_position: number;
   comment_text: string;
+  created_at?: string;
 }
 
 interface GeneralComment {
@@ -96,6 +97,25 @@ const EssayEditor: React.FC = () => {
         return 'bg-green-100 text-green-700';
       default:
         return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const formatReviewDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+      return diffInMinutes < 1 ? 'Just now' : `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
+    } else if (diffInDays < 7) {
+      return `${diffInDays} day${diffInDays !== 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
   };
 
@@ -508,12 +528,17 @@ const EssayEditor: React.FC = () => {
             >
               <div className="px-5 py-4">
                 <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 bg-lime-100 rounded-lg">
-                      <MessageSquare className="w-4 h-4 text-lime-600" />
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-lime-100 rounded-lg">
+                        <MessageSquare className="w-4 h-4 text-lime-600" />
+                      </div>
+                      <p className="text-sm font-bold text-gray-900">
+                        {activeComment.counselor_name}
+                      </p>
                     </div>
-                    <p className="text-sm font-bold text-gray-900">
-                      {activeComment.counselor_name}
+                    <p className="text-xs text-gray-500 mt-1 ml-9">
+                      Reviewed {activeComment.created_at ? formatReviewDate(activeComment.created_at) : 'recently'}
                     </p>
                   </div>
                   <button
