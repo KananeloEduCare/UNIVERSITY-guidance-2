@@ -685,11 +685,18 @@ const EssayEditor: React.FC = () => {
               {selectedEssay.status === 'reviewed' && selectedEssay.reviewData && (
                 <div className="border-t border-gray-200 p-3 bg-blue-50">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-blue-600" />
-                      <p className="text-xs font-semibold text-blue-900">
-                        Essay Reviewed by {selectedEssay.reviewData.reviewedBy}
-                      </p>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-blue-600" />
+                        <p className="text-xs font-semibold text-blue-900">
+                          Essay Reviewed by {selectedEssay.reviewData.reviewedBy}
+                        </p>
+                      </div>
+                      {selectedEssay.reviewData.reviewedAt && (
+                        <p className="text-xs text-blue-700 ml-6">
+                          Reviewed {formatReviewDate(selectedEssay.reviewData.reviewedAt)}
+                        </p>
+                      )}
                     </div>
                     {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
                       <div className="flex items-center gap-1.5 bg-yellow-100 px-2 py-1 rounded border border-yellow-300">
