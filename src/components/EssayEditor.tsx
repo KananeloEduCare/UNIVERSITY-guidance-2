@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bold, Italic, Underline, Save, Send, Plus, FileText, Edit2, Trash2, ChevronDown, List, CheckCircle, MessageSquare, Star } from 'lucide-react';
+import { Bold, Italic, Underline, Save, Send, Plus, FileText, Edit2, Trash2, ChevronDown, List, CheckCircle, MessageSquare, Star, ArrowLeft } from 'lucide-react';
 import { database } from '../config/firebase';
 import { ref, set, onValue, remove } from 'firebase/database';
 import { userStorage } from '../services/userStorage';
@@ -50,11 +50,11 @@ const EssayEditor: React.FC = () => {
   const [selectedEssay, setSelectedEssay] = useState<Essay | null>(null);
   const [newEssayTitle, setNewEssayTitle] = useState('');
   const [newEssayType, setNewEssayType] = useState<'personal_statement' | 'supplement' | 'activity_list'>('personal_statement');
-  const [showEssayList, setShowEssayList] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeComment, setActiveComment] = useState<InlineComment | null>(null);
   const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
   const [activeCategory, setActiveCategory] = useState<'draft' | 'submitted' | 'reviewed'>('draft');
+  const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
 
   const editorRef = useRef<HTMLDivElement>(null);
   const essayContentRef = useRef<HTMLDivElement>(null);
@@ -129,6 +129,21 @@ const EssayEditor: React.FC = () => {
 
   const getFilteredEssays = () => {
     return essays.filter(e => e.status === activeCategory);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleEssayClick = (essay: Essay) => {
+    setSelectedEssay(essay);
+    setViewMode('editor');
+  };
+
+  const handleBackToList = () => {
+    setViewMode('list');
+    setSelectedEssay(null);
   };
 
   const renderEssayWithHighlights = (content: string, inlineComments: InlineComment[]) => {
@@ -279,6 +294,7 @@ const EssayEditor: React.FC = () => {
 
     await saveEssayToFirebase(newEssay);
     setSelectedEssay(newEssay);
+    setViewMode('editor');
     setShowNewEssayForm(false);
     setNewEssayTitle('');
     setNewEssayType('personal_statement');
@@ -437,7 +453,7 @@ const EssayEditor: React.FC = () => {
           </div>
         )}
 
-        {essays.length > 0 && (
+        {essays.length > 0 && viewMode === 'list' && (
           <div className="mb-4">
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
@@ -477,13 +493,10 @@ const EssayEditor: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 mb-4">
-              <div className="flex items-center gap-2 border-b border-gray-200 pb-3 mb-3">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+              <div className="flex items-center gap-2 mb-4">
                 <button
-                  onClick={() => {
-                    setActiveCategory('draft');
-                    setSelectedEssay(null);
-                  }}
+                  onClick={() => setActiveCategory('draft')}
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                     activeCategory === 'draft'
                       ? 'bg-blue-100 text-blue-700'
@@ -493,10 +506,7 @@ const EssayEditor: React.FC = () => {
                   Drafts
                 </button>
                 <button
-                  onClick={() => {
-                    setActiveCategory('submitted');
-                    setSelectedEssay(null);
-                  }}
+                  onClick={() => setActiveCategory('submitted')}
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                     activeCategory === 'submitted'
                       ? 'bg-green-100 text-green-700'
@@ -506,10 +516,7 @@ const EssayEditor: React.FC = () => {
                   Submitted
                 </button>
                 <button
-                  onClick={() => {
-                    setActiveCategory('reviewed');
-                    setSelectedEssay(null);
-                  }}
+                  onClick={() => setActiveCategory('reviewed')}
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                     activeCategory === 'reviewed'
                       ? 'bg-purple-100 text-purple-700'
@@ -520,51 +527,102 @@ const EssayEditor: React.FC = () => {
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {getFilteredEssays().length > 0 ? (
                   getFilteredEssays().map(essay => (
-                    <button
+                    <div
                       key={essay.id}
-                      onClick={() => setSelectedEssay(essay)}
-                      className={`flex-shrink-0 px-4 py-2.5 rounded-lg border-2 transition-all ${
-                        selectedEssay?.id === essay.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                      }`}
+                      onClick={() => handleEssayClick(essay)}
+                      className="bg-white border-2 border-gray-200 rounded-xl p-4 cursor-pointer transition-all hover:border-blue-400 hover:shadow-md group"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="flex flex-col items-start min-w-0">
-                          <span className="text-sm font-medium text-gray-900 truncate max-w-[200px]">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-semibold text-gray-900 mb-1 truncate group-hover:text-blue-600 transition-colors">
                             {essay.title}
+                          </h3>
+                          <span className={`inline-block text-xs px-2 py-1 rounded ${getTypeColor(essay.type)}`}>
+                            {getTypeLabel(essay.type)}
                           </span>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${getTypeColor(essay.type)}`}>
-                              {getTypeLabel(essay.type)}
-                            </span>
-                            <span className="text-xs text-gray-500">{essay.wordCount} words</span>
-                          </div>
                         </div>
-                        {selectedEssay?.id === essay.id && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteEssay(essay.id);
-                            }}
-                            className="flex-shrink-0 ml-2 text-red-600 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                        {essay.status === 'reviewed' && essay.reviewData && (
+                          <div className="flex items-center gap-1 bg-yellow-100 px-2 py-1 rounded-lg">
+                            <Star className="w-3.5 h-3.5 text-yellow-600 fill-yellow-600" />
+                            <span className="text-xs font-semibold text-yellow-700">
+                              {essay.reviewData.score}%
+                            </span>
+                          </div>
                         )}
                       </div>
-                    </button>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">Word Count</span>
+                          <span className="font-medium text-gray-900">{essay.wordCount} words</span>
+                        </div>
+
+                        {essay.status === 'reviewed' && essay.reviewData ? (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-500">Reviewed By</span>
+                              <span className="font-medium text-gray-900">{essay.reviewData.reviewedBy}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-500">Review Date</span>
+                              <span className="font-medium text-gray-900">{formatReviewDate(essay.reviewData.reviewedAt)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500">Last Modified</span>
+                            <span className="font-medium text-gray-900">{formatDate(essay.lastModified)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between">
+                          {essay.status === 'draft' && (
+                            <span className="text-xs text-blue-600 font-medium flex items-center gap-1">
+                              <Edit2 className="w-3 h-3" />
+                              Continue editing
+                            </span>
+                          )}
+                          {essay.status === 'submitted' && (
+                            <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Awaiting review
+                            </span>
+                          )}
+                          {essay.status === 'reviewed' && (
+                            <span className="text-xs text-purple-600 font-medium flex items-center gap-1">
+                              <MessageSquare className="w-3 h-3" />
+                              View feedback
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   ))
                 ) : (
-                  <div className="w-full text-center py-4">
+                  <div className="col-span-full text-center py-8">
+                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-sm text-gray-500">No {activeCategory} essays yet</p>
                   </div>
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {viewMode === 'editor' && selectedEssay && (
+          <div className="mb-4">
+            <button
+              onClick={handleBackToList}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">Back to Essays</span>
+            </button>
           </div>
         )}
 
@@ -613,7 +671,7 @@ const EssayEditor: React.FC = () => {
             </div>
           )}
 
-          {selectedEssay ? (
+          {viewMode === 'editor' && selectedEssay ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="border-b border-gray-200 p-3">
                 <div className="flex items-center justify-between">
@@ -794,20 +852,7 @@ const EssayEditor: React.FC = () => {
               )}
 
             </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-              <div className="text-center text-gray-500">
-                <Edit2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <h3 className="text-base font-medium mb-1.5">No Essay Selected</h3>
-                <p className="text-xs">
-                  {essays.length === 0
-                    ? 'Create your first essay to get started'
-                    : 'Select an essay from the dropdown above to start writing'
-                  }
-                </p>
-              </div>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
