@@ -526,11 +526,6 @@ const EssayEditor: React.FC = () => {
                     </svg>
                   </button>
                 </div>
-                <div className="mb-3 bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded">
-                  <p className="text-xs text-gray-700 italic">
-                    "{activeComment.highlighted_text}"
-                  </p>
-                </div>
                 <p className="text-sm text-gray-800 leading-relaxed">
                   {activeComment.comment_text}
                 </p>
@@ -538,7 +533,6 @@ const EssayEditor: React.FC = () => {
             </div>
           )}
 
-        <div className={selectedEssay?.status === 'reviewed' && selectedEssay.reviewData?.generalComments && selectedEssay.reviewData.generalComments.length > 0 ? "grid grid-cols-[1fr,350px] gap-4" : ""}>
           {selectedEssay ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="border-b border-gray-200 p-3">
@@ -682,6 +676,36 @@ const EssayEditor: React.FC = () => {
                 </div>
               )}
 
+              {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
+                <div className="border-t border-gray-200 p-4 bg-gray-50">
+                  <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-blue-600" />
+                    General Feedback
+                  </h3>
+
+                  <div className="space-y-3">
+                    {selectedEssay.reviewData.generalComments.map((comment) => (
+                      <div
+                        key={comment.id}
+                        className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="text-xs font-semibold text-gray-700">
+                            {comment.counselor_name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {comment.comment_text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
@@ -697,34 +721,6 @@ const EssayEditor: React.FC = () => {
               </div>
             </div>
           )}
-
-          {selectedEssay?.status === 'reviewed' && selectedEssay.reviewData?.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 h-fit sticky top-4 max-h-[calc(100vh-100px)] overflow-y-auto">
-              <h3 className="text-base font-bold text-gray-900 mb-3">General Feedback</h3>
-
-              <div className="space-y-2">
-                {selectedEssay.reviewData.generalComments.map((comment) => (
-                  <div
-                    key={comment.id}
-                    className="bg-blue-50 border border-blue-200 rounded-lg p-3"
-                  >
-                    <div className="flex justify-between items-start mb-1.5">
-                      <p className="text-xs font-semibold text-gray-700">
-                        {comment.counselor_name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(comment.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <p className="text-xs text-gray-700 leading-relaxed">
-                      {comment.comment_text}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
         </div>
       </div>
     </div>
