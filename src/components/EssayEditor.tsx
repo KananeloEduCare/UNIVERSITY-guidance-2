@@ -498,7 +498,7 @@ const EssayEditor: React.FC = () => {
         <div className="relative">
           {activeComment && popupPosition && (
             <div
-              className="comment-popup fixed z-50 bg-white rounded-lg shadow-2xl border-2 border-yellow-400 max-w-md animate-in fade-in slide-in-from-top-2 duration-200"
+              className="comment-popup fixed z-50 bg-gradient-to-br from-white to-yellow-50 rounded-xl shadow-2xl border border-yellow-300 max-w-md animate-in fade-in slide-in-from-top-2 duration-200"
               style={{
                 top: `${popupPosition.top}px`,
                 left: `${popupPosition.left}px`,
@@ -506,11 +506,13 @@ const EssayEditor: React.FC = () => {
                 overflowY: 'auto'
               }}
             >
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-yellow-600" />
-                    <p className="text-sm font-semibold text-gray-900">
+              <div className="px-5 py-4">
+                <div className="flex justify-between items-center mb-3 pb-3 border-b border-yellow-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-yellow-100 rounded-lg">
+                      <MessageSquare className="w-4 h-4 text-yellow-600" />
+                    </div>
+                    <p className="text-sm font-bold text-gray-900">
                       {activeComment.counselor_name}
                     </p>
                   </div>
@@ -519,14 +521,14 @@ const EssayEditor: React.FC = () => {
                       setActiveComment(null);
                       setPopupPosition(null);
                     }}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="ml-6 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-                <p className="text-sm text-gray-800 leading-relaxed">
+                <p className="text-sm text-gray-700 leading-relaxed">
                   {activeComment.comment_text}
                 </p>
               </div>
