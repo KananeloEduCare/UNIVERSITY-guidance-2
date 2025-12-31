@@ -533,7 +533,7 @@ const EssayEditor: React.FC = () => {
                     <div
                       key={essay.id}
                       onClick={() => handleEssayClick(essay)}
-                      className="bg-white border-2 border-gray-200 rounded-xl p-5 cursor-pointer transition-all hover:border-blue-400 hover:shadow-md group"
+                      className="bg-white border border-gray-200 rounded-xl p-5 cursor-pointer transition-all hover:border-blue-400 hover:shadow-md group"
                     >
                       <div className="flex items-center justify-between gap-6">
                         <div className="flex-1 min-w-0">
