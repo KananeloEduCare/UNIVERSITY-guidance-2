@@ -544,14 +544,6 @@ const EssayEditor: React.FC = () => {
                             <span className={`text-xs px-2.5 py-1 rounded-full ${getTypeColor(essay.type)}`}>
                               {getTypeLabel(essay.type)}
                             </span>
-                            {essay.status === 'reviewed' && essay.reviewData && (
-                              <div className="flex items-center gap-1.5 bg-yellow-100 px-3 py-1 rounded-full">
-                                <Star className="w-4 h-4 text-yellow-600 fill-yellow-600" />
-                                <span className="text-sm font-semibold text-yellow-700">
-                                  {essay.reviewData.score}%
-                                </span>
-                              </div>
-                            )}
                           </div>
 
                           <div className="flex items-center gap-6 text-sm text-gray-600">
