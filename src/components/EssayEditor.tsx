@@ -54,6 +54,7 @@ const EssayEditor: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeComment, setActiveComment] = useState<InlineComment | null>(null);
   const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
+  const [activeCategory, setActiveCategory] = useState<'draft' | 'submitted' | 'reviewed'>('draft');
 
   const editorRef = useRef<HTMLDivElement>(null);
   const essayContentRef = useRef<HTMLDivElement>(null);
@@ -117,6 +118,17 @@ const EssayEditor: React.FC = () => {
     } else {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
+  };
+
+  const getEssayStats = () => {
+    const total = essays.length;
+    const reviewed = essays.filter(e => e.status === 'reviewed').length;
+    const submitted = essays.filter(e => e.status === 'submitted').length;
+    return { total, reviewed, submitted };
+  };
+
+  const getFilteredEssays = () => {
+    return essays.filter(e => e.status === activeCategory);
   };
 
   const renderEssayWithHighlights = (content: string, inlineComments: InlineComment[]) => {
@@ -427,90 +439,131 @@ const EssayEditor: React.FC = () => {
 
         {essays.length > 0 && (
           <div className="mb-4">
-            <div className="relative">
-              <button
-                onClick={() => setShowEssayList(!showEssayList)}
-                className="w-full bg-white rounded-lg border border-gray-300 px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <List className="w-4 h-4 text-gray-500" />
-                  {selectedEssay ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">{selectedEssay.title}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${getTypeColor(selectedEssay.type)}`}>
-                        {getTypeLabel(selectedEssay.type)}
-                      </span>
-                      {selectedEssay.status === 'submitted' && (
-                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                          Submitted
-                        </span>
-                      )}
-                      {selectedEssay.status === 'reviewed' && (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />
-                          Reviewed
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-600">Select an essay to edit</span>
-                  )}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-blue-600 mb-1">Total Essays</p>
+                    <p className="text-2xl font-bold text-blue-900">{getEssayStats().total}</p>
+                  </div>
+                  <div className="p-2 bg-blue-200 rounded-lg">
+                    <FileText className="w-5 h-5 text-blue-700" />
+                  </div>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showEssayList ? 'rotate-180' : ''}`} />
-              </button>
+              </div>
 
-              {showEssayList && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg border border-gray-200 shadow-lg z-10 max-h-80 overflow-y-auto">
-                  {essays.map(essay => (
-                    <div
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-green-600 mb-1">Submitted</p>
+                    <p className="text-2xl font-bold text-green-900">{getEssayStats().submitted}</p>
+                  </div>
+                  <div className="p-2 bg-green-200 rounded-lg">
+                    <Send className="w-5 h-5 text-green-700" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-purple-600 mb-1">Reviewed</p>
+                    <p className="text-2xl font-bold text-purple-900">{getEssayStats().reviewed}</p>
+                  </div>
+                  <div className="p-2 bg-purple-200 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-purple-700" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 mb-4">
+              <div className="flex items-center gap-2 border-b border-gray-200 pb-3 mb-3">
+                <button
+                  onClick={() => {
+                    setActiveCategory('draft');
+                    setSelectedEssay(null);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    activeCategory === 'draft'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Drafts
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveCategory('submitted');
+                    setSelectedEssay(null);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    activeCategory === 'submitted'
+                      ? 'bg-green-100 text-green-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Submitted
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveCategory('reviewed');
+                    setSelectedEssay(null);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    activeCategory === 'reviewed'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Reviewed
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {getFilteredEssays().length > 0 ? (
+                  getFilteredEssays().map(essay => (
+                    <button
                       key={essay.id}
-                      onClick={() => {
-                        setSelectedEssay(essay);
-                        setShowEssayList(false);
-                      }}
-                      className={`p-3 border-b border-gray-100 cursor-pointer transition-all hover:bg-gray-50 ${
-                        selectedEssay?.id === essay.id ? 'bg-blue-50' : ''
+                      onClick={() => setSelectedEssay(essay)}
+                      className={`flex-shrink-0 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                        selectedEssay?.id === essay.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
-                      <div className="flex items-start justify-between mb-1.5">
-                        <h3 className="text-sm font-medium text-gray-900">{essay.title}</h3>
-                        <div className="flex items-center gap-1.5">
-                          {essay.status === 'submitted' && (
-                            <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                              Submitted
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex flex-col items-start min-w-0">
+                          <span className="text-sm font-medium text-gray-900 truncate max-w-[200px]">
+                            {essay.title}
+                          </span>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${getTypeColor(essay.type)}`}>
+                              {getTypeLabel(essay.type)}
                             </span>
-                          )}
-                          {essay.status === 'reviewed' && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" />
-                              Reviewed
-                            </span>
-                          )}
-                          {selectedEssay?.id === essay.id && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteEssay(essay.id);
-                                setShowEssayList(false);
-                              }}
-                              className="text-red-600 hover:text-red-700 p-0.5"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                            <span className="text-xs text-gray-500">{essay.wordCount} words</span>
+                          </div>
                         </div>
+                        {selectedEssay?.id === essay.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteEssay(essay.id);
+                            }}
+                            className="flex-shrink-0 ml-2 text-red-600 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className={`px-1.5 py-0.5 rounded ${getTypeColor(essay.type)}`}>
-                          {getTypeLabel(essay.type)}
-                        </span>
-                        <span className="text-gray-500">{essay.wordCount} words</span>
-                        <span className="text-gray-400">Modified: {new Date(essay.lastModified).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    </button>
+                  ))
+                ) : (
+                  <div className="w-full text-center py-4">
+                    <p className="text-sm text-gray-500">No {activeCategory} essays yet</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
