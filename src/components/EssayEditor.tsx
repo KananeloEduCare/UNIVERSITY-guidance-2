@@ -52,6 +52,7 @@ const EssayEditor: React.FC = () => {
   const [showEssayList, setShowEssayList] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeComment, setActiveComment] = useState<InlineComment | null>(null);
+  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const essayContentRef = useRef<HTMLDivElement>(null);
@@ -126,6 +127,11 @@ const EssayEditor: React.FC = () => {
           }`}
           onClick={(e) => {
             e.stopPropagation();
+            const rect = (e.target as HTMLElement).getBoundingClientRect();
+            setPopupPosition({
+              top: rect.bottom + window.scrollY + 8,
+              left: rect.left + window.scrollX
+            });
             setActiveComment(comment);
           }}
         >
@@ -307,6 +313,21 @@ const EssayEditor: React.FC = () => {
     }
   }, [selectedEssay?.id]);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (activeComment) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.comment-popup') && !target.closest('.bg-yellow-200') && !target.closest('.bg-yellow-300')) {
+          setActiveComment(null);
+          setPopupPosition(null);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [activeComment]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -474,7 +495,50 @@ const EssayEditor: React.FC = () => {
           </div>
         )}
 
-        <div className={selectedEssay?.status === 'reviewed' && selectedEssay.reviewData ? "grid grid-cols-[1fr,350px] gap-4" : ""}>
+        <div className="relative">
+          {activeComment && popupPosition && (
+            <div
+              className="comment-popup fixed z-50 bg-white rounded-lg shadow-2xl border-2 border-yellow-400 max-w-md animate-in fade-in slide-in-from-top-2 duration-200"
+              style={{
+                top: `${popupPosition.top}px`,
+                left: `${popupPosition.left}px`,
+                maxHeight: '300px',
+                overflowY: 'auto'
+              }}
+            >
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-yellow-600" />
+                    <p className="text-sm font-semibold text-gray-900">
+                      {activeComment.counselor_name}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setActiveComment(null);
+                      setPopupPosition(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mb-3 bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded">
+                  <p className="text-xs text-gray-700 italic">
+                    "{activeComment.highlighted_text}"
+                  </p>
+                </div>
+                <p className="text-sm text-gray-800 leading-relaxed">
+                  {activeComment.comment_text}
+                </p>
+              </div>
+            </div>
+          )}
+
+        <div className={selectedEssay?.status === 'reviewed' && selectedEssay.reviewData?.generalComments && selectedEssay.reviewData.generalComments.length > 0 ? "grid grid-cols-[1fr,350px] gap-4" : ""}>
           {selectedEssay ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="border-b border-gray-200 p-3">
@@ -599,11 +663,21 @@ const EssayEditor: React.FC = () => {
 
               {selectedEssay.status === 'reviewed' && selectedEssay.reviewData && (
                 <div className="border-t border-gray-200 p-3 bg-blue-50">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-blue-600" />
-                    <p className="text-xs font-semibold text-blue-900">
-                      Essay Reviewed by {selectedEssay.reviewData.reviewedBy}
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs font-semibold text-blue-900">
+                        Essay Reviewed by {selectedEssay.reviewData.reviewedBy}
+                      </p>
+                    </div>
+                    {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
+                      <div className="flex items-center gap-1.5 bg-yellow-100 px-2 py-1 rounded border border-yellow-300">
+                        <MessageSquare className="w-3 h-3 text-yellow-700" />
+                        <p className="text-xs text-yellow-700 font-medium">
+                          {selectedEssay.reviewData.inlineComments.length} inline comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''} - click highlights
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -624,100 +698,33 @@ const EssayEditor: React.FC = () => {
             </div>
           )}
 
-          {selectedEssay?.status === 'reviewed' && selectedEssay.reviewData && (
+          {selectedEssay?.status === 'reviewed' && selectedEssay.reviewData?.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 h-fit sticky top-4 max-h-[calc(100vh-100px)] overflow-y-auto">
-              <h3 className="text-base font-bold text-gray-900 mb-3">Feedback</h3>
+              <h3 className="text-base font-bold text-gray-900 mb-3">General Feedback</h3>
 
-              {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <MessageSquare className="w-3.5 h-3.5 text-yellow-600" />
-                    <h4 className="text-xs font-semibold text-gray-700">Inline Comments</h4>
-                  </div>
-
-                  {activeComment ? (
-                    <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-3 mb-2">
-                      <div className="flex justify-between items-start mb-1.5">
-                        <p className="text-xs font-semibold text-gray-700">
-                          {activeComment.counselor_name}
-                        </p>
-                        <button
-                          onClick={() => setActiveComment(null)}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-600 italic mb-1.5 bg-yellow-100 px-2 py-1 rounded border border-yellow-200">
-                        "{activeComment.highlighted_text}"
+              <div className="space-y-2">
+                {selectedEssay.reviewData.generalComments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="bg-blue-50 border border-blue-200 rounded-lg p-3"
+                  >
+                    <div className="flex justify-between items-start mb-1.5">
+                      <p className="text-xs font-semibold text-gray-700">
+                        {comment.counselor_name}
                       </p>
-                      <p className="text-xs text-gray-800 leading-relaxed">
-                        {activeComment.comment_text}
+                      <p className="text-xs text-gray-500">
+                        {new Date(comment.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                  ) : (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-2">
-                      <p className="text-xs text-gray-600">
-                        <span className="font-semibold">{selectedEssay.reviewData.inlineComments.length} comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''}</span> highlighted. Click on highlighted text to view.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    {selectedEssay.reviewData.inlineComments.map((comment, idx) => (
-                      <button
-                        key={comment.id}
-                        onClick={() => setActiveComment(comment)}
-                        className={`w-full text-left p-2 rounded-lg border transition-all ${
-                          activeComment?.id === comment.id
-                            ? 'bg-yellow-100 border-yellow-400'
-                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        <p className="text-xs font-medium text-gray-700 mb-0.5">
-                          Comment {idx + 1}
-                        </p>
-                        <p className="text-xs text-gray-600 line-clamp-2">
-                          "{comment.highlighted_text}"
-                        </p>
-                      </button>
-                    ))}
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      {comment.comment_text}
+                    </p>
                   </div>
-                </div>
-              )}
-
-              {selectedEssay.reviewData.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-                    <h4 className="text-xs font-semibold text-gray-700">General Feedback</h4>
-                  </div>
-                  <div className="space-y-2">
-                    {selectedEssay.reviewData.generalComments.map((comment) => (
-                      <div
-                        key={comment.id}
-                        className="bg-blue-50 border border-blue-200 rounded-lg p-3"
-                      >
-                        <div className="flex justify-between items-start mb-1.5">
-                          <p className="text-xs font-semibold text-gray-700">
-                            {comment.counselor_name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(comment.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <p className="text-xs text-gray-700 leading-relaxed">
-                          {comment.comment_text}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
