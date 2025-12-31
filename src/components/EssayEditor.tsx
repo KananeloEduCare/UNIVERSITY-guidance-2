@@ -498,7 +498,7 @@ const EssayEditor: React.FC = () => {
         <div className="relative">
           {activeComment && popupPosition && (
             <div
-              className="comment-popup fixed z-50 bg-gradient-to-br from-white to-yellow-50 rounded-xl shadow-2xl border border-yellow-300 max-w-md animate-in fade-in slide-in-from-top-2 duration-200"
+              className="comment-popup fixed z-50 bg-white rounded-xl shadow-2xl border border-lime-300 max-w-md animate-in fade-in slide-in-from-top-2 duration-200"
               style={{
                 top: `${popupPosition.top}px`,
                 left: `${popupPosition.left}px`,
@@ -507,10 +507,10 @@ const EssayEditor: React.FC = () => {
               }}
             >
               <div className="px-5 py-4">
-                <div className="flex justify-between items-center mb-3 pb-3 border-b border-yellow-200">
+                <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 bg-yellow-100 rounded-lg">
-                      <MessageSquare className="w-4 h-4 text-yellow-600" />
+                    <div className="p-1.5 bg-lime-100 rounded-lg">
+                      <MessageSquare className="w-4 h-4 text-lime-600" />
                     </div>
                     <p className="text-sm font-bold text-gray-900">
                       {activeComment.counselor_name}
