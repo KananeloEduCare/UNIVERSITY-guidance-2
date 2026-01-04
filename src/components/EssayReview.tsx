@@ -60,10 +60,30 @@ const EssayReview: React.FC = () => {
   const currentUser = userStorage.getStoredUser();
   const counselorName = currentUser?.name || 'University Counselor';
 
-  const stripHtmlTags = (html: string): string => {
+  const cleanHtmlContent = (html: string): string => {
     const div = document.createElement('div');
     div.innerHTML = html;
-    return div.textContent || div.innerText || '';
+
+    const paragraphs = div.querySelectorAll('p');
+    paragraphs.forEach(p => {
+      Array.from(p.attributes).forEach(attr => {
+        if (attr.name.startsWith('data-')) {
+          p.removeAttribute(attr.name);
+        }
+      });
+    });
+
+    return div.innerHTML;
+  };
+
+  const htmlToPlainText = (html: string): string => {
+    let text = html;
+    text = text.replace(/<\/p>/gi, '\n\n');
+    text = text.replace(/<br\s*\/?>/gi, '\n');
+    text = text.replace(/<p[^>]*>/gi, '');
+    text = text.replace(/<[^>]+>/g, '');
+    text = text.replace(/&nbsp;/g, ' ');
+    return text.trim();
   };
 
   const formatReviewDate = (dateString: string) => {
@@ -366,7 +386,7 @@ const EssayReview: React.FC = () => {
   const renderEssayWithHighlights = () => {
     if (!selectedEssay) return null;
 
-    const text = stripHtmlTags(selectedEssay.essay_content);
+    const text = htmlToPlainText(selectedEssay.essay_content);
 
     const highlights: Array<{
       start: number;
@@ -530,7 +550,12 @@ const EssayReview: React.FC = () => {
               <h3 className="text-base font-semibold text-slate-800 mb-4">Essay Content</h3>
               <div
                 ref={essayContentRef}
-                className="prose prose-sm max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap select-text"
+                className="prose prose-sm max-w-none text-slate-700 leading-relaxed select-text"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  fontFamily: selectedEssay.font_family,
+                  fontSize: `${selectedEssay.font_size}pt`
+                }}
                 onMouseUp={handleTextSelection}
               >
                 {renderEssayWithHighlights()}
