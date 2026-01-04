@@ -39,6 +39,8 @@ interface Essay {
   status: 'draft' | 'submitted' | 'reviewed';
   createdAt: string;
   lastModified: string;
+  submittedAt?: string;
+  universityName?: string;
   fontFamily: string;
   fontSize: number;
   reviewData?: ReviewData;
@@ -50,7 +52,10 @@ const EssayEditor: React.FC = () => {
   const [selectedEssay, setSelectedEssay] = useState<Essay | null>(null);
   const [newEssayTitle, setNewEssayTitle] = useState('');
   const [newEssayType, setNewEssayType] = useState<'personal_statement' | 'supplement' | 'activity_list'>('personal_statement');
+  const [newEssayUniversity, setNewEssayUniversity] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
   const [activeComment, setActiveComment] = useState<InlineComment | null>(null);
   const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
   const [activeCategory, setActiveCategory] = useState<'draft' | 'submitted' | 'reviewed'>('draft');
@@ -103,21 +108,17 @@ const EssayEditor: React.FC = () => {
 
   const formatReviewDate = (dateString: string) => {
     const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    const diffInDays = Math.floor(diffInHours / 24);
+    const day = date.getDate();
+    const suffix = ['th', 'st', 'nd', 'rd'][(day % 10 > 3 || Math.floor(day / 10) === 1) ? 0 : day % 10];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const month = monthNames[date.getMonth()];
+    const year = date.getFullYear();
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
 
-    if (diffInHours < 1) {
-      const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-      return diffInMinutes < 1 ? 'Just now' : `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
-    } else if (diffInHours < 24) {
-      return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
-    } else if (diffInDays < 7) {
-      return `${diffInDays} day${diffInDays !== 1 ? 's' : ''} ago`;
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
+    return `${day}${suffix} ${month} ${year} at ${formattedHours}:${minutes} ${ampm}`;
   };
 
   const getEssayStats = () => {
@@ -245,6 +246,8 @@ const EssayEditor: React.FC = () => {
           status: essayData.status || 'draft',
           createdAt: essayData.createdAt || new Date().toISOString().split('T')[0],
           lastModified: essayData.lastModified || new Date().toISOString().split('T')[0],
+          submittedAt: essayData.submittedAt || undefined,
+          universityName: essayData.universityName || undefined,
           fontFamily: essayData.fontFamily || 'Arial',
           fontSize: essayData.fontSize || 14,
           reviewData: essayData.reviewData || undefined
@@ -270,6 +273,8 @@ const EssayEditor: React.FC = () => {
       wordCount: essay.wordCount,
       createdAt: essay.createdAt,
       lastModified: essay.lastModified,
+      submittedAt: essay.submittedAt || null,
+      universityName: essay.universityName || null,
       fontFamily: essay.fontFamily,
       fontSize: essay.fontSize,
       reviewData: essay.reviewData || null
@@ -278,6 +283,10 @@ const EssayEditor: React.FC = () => {
 
   const handleCreateEssay = async () => {
     if (!newEssayTitle.trim()) return;
+    if (newEssayType === 'supplement' && !newEssayUniversity.trim()) {
+      alert('Please enter the university name for this supplementary essay');
+      return;
+    }
 
     const newEssay: Essay = {
       id: newEssayTitle,
@@ -288,6 +297,7 @@ const EssayEditor: React.FC = () => {
       status: 'draft',
       createdAt: new Date().toISOString().split('T')[0],
       lastModified: new Date().toISOString().split('T')[0],
+      universityName: newEssayType === 'supplement' ? newEssayUniversity : undefined,
       fontFamily: 'Arial',
       fontSize: 14
     };
@@ -298,6 +308,7 @@ const EssayEditor: React.FC = () => {
     setShowNewEssayForm(false);
     setNewEssayTitle('');
     setNewEssayType('personal_statement');
+    setNewEssayUniversity('');
   };
 
   const handleFontFamilyChange = async (fontFamily: string) => {
@@ -314,6 +325,14 @@ const EssayEditor: React.FC = () => {
     await saveEssayToFirebase(updated);
   };
 
+  const showNotificationMessage = (message: string) => {
+    setNotificationMessage(message);
+    setShowNotification(true);
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 3000);
+  };
+
   const handleSave = async () => {
     if (!selectedEssay || !editorRef.current) return;
 
@@ -326,7 +345,7 @@ const EssayEditor: React.FC = () => {
     await saveEssayToFirebase(updatedEssay);
     setSelectedEssay(updatedEssay);
 
-    alert('Essay saved as draft!');
+    showNotificationMessage('Essay saved as draft!');
   };
 
   const handleSubmit = async () => {
@@ -335,13 +354,14 @@ const EssayEditor: React.FC = () => {
     const updatedEssay = {
       ...selectedEssay,
       status: 'submitted' as const,
-      lastModified: new Date().toISOString().split('T')[0]
+      lastModified: new Date().toISOString().split('T')[0],
+      submittedAt: new Date().toISOString()
     };
 
     await saveEssayToFirebase(updatedEssay);
     setSelectedEssay(updatedEssay);
 
-    alert('Essay submitted for review!');
+    showNotificationMessage('Essay submitted for review!');
   };
 
   const handleDeleteEssay = async (id: string) => {
@@ -386,6 +406,14 @@ const EssayEditor: React.FC = () => {
 
   return (
     <div className="p-4">
+      {showNotification && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <CheckCircle className="w-5 h-5" />
+            <span className="font-medium">{notificationMessage}</span>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -431,6 +459,20 @@ const EssayEditor: React.FC = () => {
                   <option value="activity_list">Activity List</option>
                 </select>
               </div>
+              {newEssayType === 'supplement' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    University Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newEssayUniversity}
+                    onChange={(e) => setNewEssayUniversity(e.target.value)}
+                    placeholder="e.g., Harvard University"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={handleCreateEssay}
@@ -443,6 +485,7 @@ const EssayEditor: React.FC = () => {
                     setShowNewEssayForm(false);
                     setNewEssayTitle('');
                     setNewEssayType('personal_statement');
+                    setNewEssayUniversity('');
                   }}
                   className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
@@ -544,6 +587,11 @@ const EssayEditor: React.FC = () => {
                             <span className={`text-xs px-2.5 py-1 rounded-full ${getTypeColor(essay.type)}`}>
                               {getTypeLabel(essay.type)}
                             </span>
+                            {essay.universityName && (
+                              <span className="text-xs text-gray-600 italic">
+                                for {essay.universityName}
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-6 text-sm text-gray-600">
@@ -563,6 +611,11 @@ const EssayEditor: React.FC = () => {
                                   <span className="font-medium text-gray-900">{formatReviewDate(essay.reviewData.reviewedAt)}</span>
                                 </div>
                               </>
+                            ) : essay.status === 'submitted' && essay.submittedAt ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500">Submitted on</span>
+                                <span className="font-medium text-gray-900">{formatReviewDate(essay.submittedAt)}</span>
+                              </div>
                             ) : (
                               <div className="flex items-center gap-2">
                                 <span className="text-gray-500">Last modified</span>
@@ -665,6 +718,19 @@ const EssayEditor: React.FC = () => {
 
           {viewMode === 'editor' && selectedEssay ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+                <h2 className="text-xl font-bold text-gray-900 mb-1">{selectedEssay.title}</h2>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2.5 py-1 rounded-full ${getTypeColor(selectedEssay.type)}`}>
+                    {getTypeLabel(selectedEssay.type)}
+                  </span>
+                  {selectedEssay.universityName && (
+                    <span className="text-sm text-gray-600 italic">
+                      for {selectedEssay.universityName}
+                    </span>
+                  )}
+                </div>
+              </div>
               <div className="border-b border-gray-200 p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">

@@ -17,6 +17,7 @@ interface Essay {
   score: number | null;
   font_family: string;
   font_size: number;
+  reviewed_at?: string;
 }
 
 interface InlineComment {
@@ -52,10 +53,33 @@ const EssayReview: React.FC = () => {
   const [totalPointsInput, setTotalPointsInput] = useState<string>('');
   const [scoreInput, setScoreInput] = useState<string>('');
   const [showGradeModal, setShowGradeModal] = useState(false);
+  const [showCommentButton, setShowCommentButton] = useState(false);
+  const [commentButtonPosition, setCommentButtonPosition] = useState<{ top: number; left: number } | null>(null);
   const essayContentRef = useRef<HTMLDivElement>(null);
 
   const currentUser = userStorage.getStoredUser();
   const counselorName = currentUser?.name || 'University Counselor';
+
+  const stripHtmlTags = (html: string): string => {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent || div.innerText || '';
+  };
+
+  const formatReviewDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const suffix = ['th', 'st', 'nd', 'rd'][(day % 10 > 3 || Math.floor(day / 10) === 1) ? 0 : day % 10];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const month = monthNames[date.getMonth()];
+    const year = date.getFullYear();
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+
+    return `${day}${suffix} ${month} ${year} at ${formattedHours}:${minutes} ${ampm}`;
+  };
 
   useEffect(() => {
     const essaysRef = ref(database, 'University Data/Essays');
@@ -83,13 +107,14 @@ const EssayReview: React.FC = () => {
               essay_type: essayData.essayType || 'personal_statement',
               essay_title: essayTitle,
               essay_content: essayData.essayText || '',
-              university_name: null,
-              submission_date: essayData.lastModified || new Date().toISOString().split('T')[0],
+              university_name: essayData.universityName || null,
+              submission_date: essayData.submittedAt || essayData.lastModified || new Date().toISOString().split('T')[0],
               status: essayData.status || 'submitted',
               total_points: essayData.reviewData?.totalPoints || null,
               score: essayData.reviewData?.score || null,
               font_family: essayData.fontFamily || 'Arial',
-              font_size: essayData.fontSize || 14
+              font_size: essayData.fontSize || 14,
+              reviewed_at: essayData.reviewData?.reviewedAt || undefined
             });
           }
         });
@@ -155,12 +180,25 @@ const EssayReview: React.FC = () => {
       const start = preSelectionRange.toString().length;
       const end = start + selectedTextContent.length;
 
+      const rect = range.getBoundingClientRect();
+      setCommentButtonPosition({
+        top: rect.bottom + window.scrollY + 5,
+        left: rect.left + window.scrollX + (rect.width / 2)
+      });
+      setShowCommentButton(true);
       setSelectedText({
         text: selectedTextContent,
         start,
         end,
       });
+    } else {
+      setShowCommentButton(false);
+      setCommentButtonPosition(null);
     }
+  };
+
+  const handleShowCommentBox = () => {
+    setShowCommentButton(false);
   };
 
   const handleAddInlineComment = async () => {
@@ -328,7 +366,7 @@ const EssayReview: React.FC = () => {
   const renderEssayWithHighlights = () => {
     if (!selectedEssay) return null;
 
-    const text = selectedEssay.essay_content;
+    const text = stripHtmlTags(selectedEssay.essay_content);
 
     const highlights: Array<{
       start: number;
@@ -411,7 +449,7 @@ const EssayReview: React.FC = () => {
         return (
           <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
             <Clock className="w-3.5 h-3.5" />
-            <span className="text-xs font-semibold">Submitted</span>
+            <span className="text-xs font-semibold">To be Reviewed</span>
           </div>
         );
       case 'reviewed':
@@ -501,7 +539,26 @@ const EssayReview: React.FC = () => {
           </div>
 
           <div className="space-y-6">
-            {selectedText && (
+            {showCommentButton && commentButtonPosition && (
+              <div
+                className="fixed z-50"
+                style={{
+                  top: `${commentButtonPosition.top}px`,
+                  left: `${commentButtonPosition.left}px`,
+                  transform: 'translateX(-50%)'
+                }}
+              >
+                <button
+                  onClick={handleShowCommentBox}
+                  className="bg-[#04ADEE] text-white px-4 py-2 rounded-lg shadow-lg hover:bg-[#0396d5] transition-colors font-medium text-sm flex items-center gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Add Comment
+                </button>
+              </div>
+            )}
+
+            {selectedText && !showCommentButton && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
@@ -544,7 +601,7 @@ const EssayReview: React.FC = () => {
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {inlineComments.length === 0 ? (
                   <p className="text-sm text-slate-500 text-center py-4">
-                    No inline comments yet. Select text to add one.
+                    No inline comments yet. Highlight text and click "Add Comment" to add one.
                   </p>
                 ) : (
                   inlineComments.map((comment) => (
@@ -783,9 +840,15 @@ const EssayReview: React.FC = () => {
                   {getStatusBadge(essay.status)}
                 </div>
                 <div className="flex items-center gap-4 text-xs text-slate-500">
-                  <span>
-                    Submitted: {new Date(essay.submission_date).toLocaleDateString()}
-                  </span>
+                  {essay.status === 'reviewed' && essay.reviewed_at ? (
+                    <span>
+                      Reviewed on: {formatReviewDate(essay.reviewed_at)}
+                    </span>
+                  ) : (
+                    <span>
+                      Submitted on: {formatReviewDate(essay.submission_date)}
+                    </span>
+                  )}
                   {essay.status === 'reviewed' && essay.total_points && essay.score !== null ? (
                     <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
                       <Star className="w-3.5 h-3.5" />
