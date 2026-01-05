@@ -64,11 +64,11 @@ const EssayReview: React.FC = () => {
     const div = document.createElement('div');
     div.innerHTML = html;
 
-    const paragraphs = div.querySelectorAll('p');
-    paragraphs.forEach(p => {
-      Array.from(p.attributes).forEach(attr => {
+    const allElements = div.querySelectorAll('*');
+    allElements.forEach(el => {
+      Array.from(el.attributes).forEach(attr => {
         if (attr.name.startsWith('data-')) {
-          p.removeAttribute(attr.name);
+          el.removeAttribute(attr.name);
         }
       });
     });
@@ -76,14 +76,79 @@ const EssayReview: React.FC = () => {
     return div.innerHTML;
   };
 
-  const htmlToPlainText = (html: string): string => {
-    let text = html;
-    text = text.replace(/<\/p>/gi, '\n\n');
-    text = text.replace(/<br\s*\/?>/gi, '\n');
-    text = text.replace(/<p[^>]*>/gi, '');
-    text = text.replace(/<[^>]+>/g, '');
-    text = text.replace(/&nbsp;/g, ' ');
-    return text.trim();
+  useEffect(() => {
+    if (selectedEssay && essayContentRef.current && inlineComments.length > 0) {
+      applyHighlightsToHtml();
+    }
+  }, [selectedEssay, inlineComments]);
+
+  const applyHighlightsToHtml = () => {
+    if (!essayContentRef.current || !selectedEssay) return;
+
+    const container = essayContentRef.current;
+    const cleanedHtml = cleanHtmlContent(selectedEssay.essay_content);
+    container.innerHTML = cleanedHtml;
+
+    const textContent = container.textContent || '';
+
+    const sortedComments = [...inlineComments].sort((a, b) => b.start_position - a.start_position);
+
+    sortedComments.forEach(comment => {
+      const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT,
+        null
+      );
+
+      let currentPos = 0;
+      let startNode: Text | null = null;
+      let startOffset = 0;
+      let endNode: Text | null = null;
+      let endOffset = 0;
+      let foundStart = false;
+
+      while (walker.nextNode()) {
+        const node = walker.currentNode as Text;
+        const nodeLength = node.length;
+
+        if (!foundStart && currentPos + nodeLength >= comment.start_position) {
+          startNode = node;
+          startOffset = comment.start_position - currentPos;
+          foundStart = true;
+        }
+
+        if (foundStart && currentPos + nodeLength >= comment.end_position) {
+          endNode = node;
+          endOffset = comment.end_position - currentPos;
+          break;
+        }
+
+        currentPos += nodeLength;
+      }
+
+      if (startNode && endNode) {
+        const range = document.createRange();
+        range.setStart(startNode, startOffset);
+        range.setEnd(endNode, endOffset);
+
+        const mark = document.createElement('mark');
+        mark.className = 'bg-yellow-200 cursor-pointer hover:bg-yellow-300 transition-colors relative group';
+        mark.setAttribute('data-comment-id', comment.id);
+        mark.title = comment.comment_text;
+
+        const tooltip = document.createElement('span');
+        tooltip.className = 'invisible group-hover:visible absolute bottom-full left-0 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg z-10 pointer-events-none';
+        tooltip.innerHTML = `<div class="font-semibold mb-1">${comment.counselor_name}</div><div>${comment.comment_text}</div>`;
+
+        mark.appendChild(tooltip);
+
+        try {
+          range.surroundContents(mark);
+        } catch (e) {
+          console.warn('Could not apply highlight', e);
+        }
+      }
+    });
   };
 
   const formatReviewDate = (dateString: string) => {
@@ -383,85 +448,16 @@ const EssayReview: React.FC = () => {
     return Math.round((reviewedEssays.length / essays.length) * 100);
   };
 
-  const renderEssayWithHighlights = () => {
-    if (!selectedEssay) return null;
+  useEffect(() => {
+    if (selectedEssay && essayContentRef.current) {
+      const cleanedHtml = cleanHtmlContent(selectedEssay.essay_content);
+      essayContentRef.current.innerHTML = cleanedHtml;
 
-    const text = htmlToPlainText(selectedEssay.essay_content);
-
-    const highlights: Array<{
-      start: number;
-      end: number;
-      type: 'comment' | 'selected';
-      comment?: InlineComment;
-    }> = [];
-
-    inlineComments.forEach(comment => {
-      highlights.push({
-        start: comment.start_position,
-        end: comment.end_position,
-        type: 'comment',
-        comment,
-      });
-    });
-
-    if (selectedText) {
-      highlights.push({
-        start: selectedText.start,
-        end: selectedText.end,
-        type: 'selected',
-      });
-    }
-
-    highlights.sort((a, b) => a.start - b.start);
-
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
-
-    highlights.forEach((highlight, idx) => {
-      if (highlight.start > lastIndex) {
-        parts.push(
-          <span key={`text-${idx}`}>
-            {text.substring(lastIndex, highlight.start)}
-          </span>
-        );
+      if (inlineComments.length > 0) {
+        setTimeout(() => applyHighlightsToHtml(), 0);
       }
-
-      if (highlight.type === 'comment' && highlight.comment) {
-        parts.push(
-          <mark
-            key={`highlight-${idx}`}
-            className="bg-yellow-200 cursor-pointer hover:bg-yellow-300 transition-colors relative group"
-            title={highlight.comment.comment_text}
-          >
-            {text.substring(highlight.start, highlight.end)}
-            <span className="invisible group-hover:visible absolute bottom-full left-0 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg z-10">
-              <div className="font-semibold mb-1">{highlight.comment.counselor_name}</div>
-              <div>{highlight.comment.comment_text}</div>
-            </span>
-          </mark>
-        );
-      } else if (highlight.type === 'selected') {
-        parts.push(
-          <mark
-            key={`selected-${idx}`}
-            className="bg-blue-200"
-          >
-            {text.substring(highlight.start, highlight.end)}
-          </mark>
-        );
-      }
-
-      lastIndex = highlight.end;
-    });
-
-    if (lastIndex < text.length) {
-      parts.push(
-        <span key="text-end">{text.substring(lastIndex)}</span>
-      );
     }
-
-    return parts;
-  };
+  }, [selectedEssay?.id]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -550,16 +546,15 @@ const EssayReview: React.FC = () => {
               <h3 className="text-base font-semibold text-slate-800 mb-4">Essay Content</h3>
               <div
                 ref={essayContentRef}
-                className="prose prose-sm max-w-none text-slate-700 leading-relaxed select-text"
+                contentEditable={false}
+                className="prose prose-sm max-w-none text-slate-700 select-text cursor-text"
                 style={{
-                  whiteSpace: 'pre-wrap',
                   fontFamily: selectedEssay.font_family,
-                  fontSize: `${selectedEssay.font_size}pt`
+                  fontSize: `${selectedEssay.font_size}pt`,
+                  lineHeight: '1.6'
                 }}
                 onMouseUp={handleTextSelection}
-              >
-                {renderEssayWithHighlights()}
-              </div>
+              />
             </div>
           </div>
 
@@ -638,12 +633,14 @@ const EssayReview: React.FC = () => {
                         <p className="text-xs font-semibold text-slate-700">
                           {comment.counselor_name}
                         </p>
-                        <button
-                          onClick={() => handleDeleteInlineComment(comment.id)}
-                          className="text-slate-400 hover:text-red-600 transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                        {selectedEssay.status !== 'reviewed' && (
+                          <button
+                            onClick={() => handleDeleteInlineComment(comment.id)}
+                            className="text-slate-400 hover:text-red-600 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                       <p className="text-xs text-slate-600 italic mb-2">
                         "{comment.highlighted_text}"
