@@ -30,6 +30,12 @@ interface ReviewData {
   generalComments: GeneralComment[];
 }
 
+interface ActivityItem {
+  id: string;
+  name: string;
+  description: string;
+}
+
 interface Essay {
   id: string;
   title: string;
@@ -44,6 +50,7 @@ interface Essay {
   fontFamily: string;
   fontSize: number;
   reviewData?: ReviewData;
+  activities?: ActivityItem[];
 }
 
 const EssayEditor: React.FC = () => {
@@ -63,6 +70,7 @@ const EssayEditor: React.FC = () => {
 
   const editorRef = useRef<HTMLDivElement>(null);
   const essayContentRef = useRef<HTMLDivElement>(null);
+  const reviewedEssayRef = useRef<HTMLDivElement>(null);
 
   const currentUser = userStorage.getStoredUser();
   const studentName = currentUser?.name || 'Unknown Student';
@@ -147,58 +155,96 @@ const EssayEditor: React.FC = () => {
     setSelectedEssay(null);
   };
 
-  const renderEssayWithHighlights = (content: string, inlineComments: InlineComment[]) => {
-    if (!inlineComments || inlineComments.length === 0) {
-      return <div dangerouslySetInnerHTML={{ __html: content }} />;
-    }
+  const cleanHtmlContent = (html: string): string => {
+    const div = document.createElement('div');
+    div.innerHTML = html;
 
-    const sortedComments = [...inlineComments].sort((a, b) => a.start_position - b.start_position);
-    const parts: JSX.Element[] = [];
-    let lastIndex = 0;
-
-    sortedComments.forEach((comment, idx) => {
-      if (comment.start_position > lastIndex) {
-        parts.push(
-          <span key={`text-${idx}`}>
-            {content.substring(lastIndex, comment.start_position)}
-          </span>
-        );
-      }
-
-      parts.push(
-        <span
-          key={`comment-${idx}`}
-          className={`cursor-pointer transition-colors ${
-            activeComment?.id === comment.id
-              ? 'bg-yellow-300 border-b-2 border-yellow-600'
-              : 'bg-yellow-200 border-b-2 border-yellow-500 hover:bg-yellow-300'
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            const rect = (e.target as HTMLElement).getBoundingClientRect();
-            setPopupPosition({
-              top: rect.bottom + window.scrollY + 8,
-              left: rect.left + window.scrollX
-            });
-            setActiveComment(comment);
-          }}
-        >
-          {content.substring(comment.start_position, comment.end_position)}
-        </span>
-      );
-
-      lastIndex = comment.end_position;
+    const allElements = div.querySelectorAll('*');
+    allElements.forEach(el => {
+      Array.from(el.attributes).forEach(attr => {
+        if (attr.name.startsWith('data-')) {
+          el.removeAttribute(attr.name);
+        }
+      });
     });
 
-    if (lastIndex < content.length) {
-      parts.push(
-        <span key="text-end">
-          {content.substring(lastIndex)}
-        </span>
-      );
-    }
+    return div.innerHTML;
+  };
 
-    return <div>{parts}</div>;
+  const applyHighlightsToReviewedEssay = (inlineComments: InlineComment[]) => {
+    if (!reviewedEssayRef.current || !selectedEssay) return;
+
+    const container = reviewedEssayRef.current;
+    const cleanedHtml = cleanHtmlContent(selectedEssay.content);
+    container.innerHTML = cleanedHtml;
+
+    if (inlineComments.length === 0) return;
+
+    const sortedComments = [...inlineComments].sort((a, b) => b.start_position - a.start_position);
+
+    sortedComments.forEach(comment => {
+      const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT,
+        null
+      );
+
+      let currentPos = 0;
+      let startNode: Text | null = null;
+      let startOffset = 0;
+      let endNode: Text | null = null;
+      let endOffset = 0;
+      let foundStart = false;
+
+      while (walker.nextNode()) {
+        const node = walker.currentNode as Text;
+        const nodeLength = node.length;
+
+        if (!foundStart && currentPos + nodeLength >= comment.start_position) {
+          startNode = node;
+          startOffset = comment.start_position - currentPos;
+          foundStart = true;
+        }
+
+        if (foundStart && currentPos + nodeLength >= comment.end_position) {
+          endNode = node;
+          endOffset = comment.end_position - currentPos;
+          break;
+        }
+
+        currentPos += nodeLength;
+      }
+
+      if (startNode && endNode) {
+        const range = document.createRange();
+        range.setStart(startNode, startOffset);
+        range.setEnd(endNode, endOffset);
+
+        const mark = document.createElement('mark');
+        mark.className = `cursor-pointer transition-colors ${
+          activeComment?.id === comment.id
+            ? 'bg-yellow-300 border-b-2 border-yellow-600'
+            : 'bg-yellow-200 border-b-2 border-yellow-500 hover:bg-yellow-300'
+        }`;
+        mark.setAttribute('data-comment-id', comment.id);
+
+        mark.onclick = (e) => {
+          e.stopPropagation();
+          const rect = (e.target as HTMLElement).getBoundingClientRect();
+          setPopupPosition({
+            top: rect.bottom + window.scrollY + 8,
+            left: rect.left + window.scrollX
+          });
+          setActiveComment(comment);
+        };
+
+        try {
+          range.surroundContents(mark);
+        } catch (e) {
+          console.warn('Could not apply highlight', e);
+        }
+      }
+    });
   };
 
   const countWords = (html: string) => {
@@ -299,7 +345,8 @@ const EssayEditor: React.FC = () => {
       lastModified: new Date().toISOString().split('T')[0],
       universityName: newEssayType === 'supplement' ? newEssayUniversity : undefined,
       fontFamily: 'Arial',
-      fontSize: 14
+      fontSize: 14,
+      activities: newEssayType === 'activity_list' ? [] : undefined
     };
 
     await saveEssayToFirebase(newEssay);
@@ -376,10 +423,18 @@ const EssayEditor: React.FC = () => {
   };
 
   useEffect(() => {
-    if (editorRef.current && selectedEssay) {
+    if (editorRef.current && selectedEssay && selectedEssay.status !== 'reviewed') {
       editorRef.current.innerHTML = selectedEssay.content;
     }
   }, [selectedEssay?.id]);
+
+  useEffect(() => {
+    if (selectedEssay && selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments) {
+      setTimeout(() => {
+        applyHighlightsToReviewedEssay(selectedEssay.reviewData!.inlineComments);
+      }, 0);
+    }
+  }, [selectedEssay?.id, activeComment]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -733,64 +788,71 @@ const EssayEditor: React.FC = () => {
               </div>
               <div className="border-b border-gray-200 p-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleFormat('bold')}
+                  {selectedEssay.type !== 'activity_list' ? (
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleFormat('bold')}
+                          disabled={selectedEssay.status === 'submitted'}
+                          className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Bold"
+                        >
+                          <Bold className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleFormat('italic')}
+                          disabled={selectedEssay.status === 'submitted'}
+                          className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Italic"
+                        >
+                          <Italic className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleFormat('underline')}
+                          disabled={selectedEssay.status === 'submitted'}
+                          className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Underline"
+                        >
+                          <Underline className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="border-l border-gray-300 h-5"></div>
+                      <select
+                        value={selectedEssay.fontFamily}
+                        onChange={(e) => handleFontFamilyChange(e.target.value)}
                         disabled={selectedEssay.status === 'submitted'}
-                        className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Bold"
+                        className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        style={{ fontFamily: selectedEssay.fontFamily }}
                       >
-                        <Bold className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleFormat('italic')}
+                        {fontFamilies.map(font => (
+                          <option key={font} value={font} style={{ fontFamily: font }}>
+                            {font}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={selectedEssay.fontSize}
+                        onChange={(e) => handleFontSizeChange(Number(e.target.value))}
                         disabled={selectedEssay.status === 'submitted'}
-                        className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Italic"
+                        className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        <Italic className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleFormat('underline')}
-                        disabled={selectedEssay.status === 'submitted'}
-                        className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Underline"
-                      >
-                        <Underline className="w-3.5 h-3.5" />
-                      </button>
+                        {fontSizes.map(size => (
+                          <option key={size} value={size}>
+                            {size}pt
+                          </option>
+                        ))}
+                      </select>
+                      <div className="border-l border-gray-300 h-5"></div>
+                      <span className="text-xs font-medium text-gray-600">
+                        {selectedEssay.wordCount} words
+                      </span>
                     </div>
-                    <div className="border-l border-gray-300 h-5"></div>
-                    <select
-                      value={selectedEssay.fontFamily}
-                      onChange={(e) => handleFontFamilyChange(e.target.value)}
-                      disabled={selectedEssay.status === 'submitted'}
-                      className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      style={{ fontFamily: selectedEssay.fontFamily }}
-                    >
-                      {fontFamilies.map(font => (
-                        <option key={font} value={font} style={{ fontFamily: font }}>
-                          {font}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={selectedEssay.fontSize}
-                      onChange={(e) => handleFontSizeChange(Number(e.target.value))}
-                      disabled={selectedEssay.status === 'submitted'}
-                      className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      {fontSizes.map(size => (
-                        <option key={size} value={size}>
-                          {size}pt
-                        </option>
-                      ))}
-                    </select>
-                    <div className="border-l border-gray-300 h-5"></div>
-                    <span className="text-xs font-medium text-gray-600">
-                      {selectedEssay.wordCount} words
-                    </span>
-                  </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <List className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-700">Activity List</span>
+                    </div>
+                  )}
                   {selectedEssay.status !== 'reviewed' && (
                     <div className="flex gap-2">
                       <button
@@ -814,18 +876,114 @@ const EssayEditor: React.FC = () => {
                 </div>
               </div>
 
-              {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments ? (
+              {selectedEssay.type === 'activity_list' ? (
+                <div className="essay-container p-6 min-h-[500px]">
+                  <div className="space-y-4">
+                    {selectedEssay.activities && selectedEssay.activities.length > 0 ? (
+                      selectedEssay.activities.map((activity, index) => (
+                        <div key={activity.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-gray-700">Activity {index + 1}</h4>
+                            {selectedEssay.status !== 'submitted' && selectedEssay.status !== 'reviewed' && (
+                              <button
+                                onClick={() => {
+                                  const updated = {
+                                    ...selectedEssay,
+                                    activities: selectedEssay.activities?.filter(a => a.id !== activity.id)
+                                  };
+                                  setSelectedEssay(updated);
+                                  saveEssayToFirebase(updated);
+                                }}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Activity Name</label>
+                              <input
+                                type="text"
+                                value={activity.name}
+                                onChange={(e) => {
+                                  const updated = {
+                                    ...selectedEssay,
+                                    activities: selectedEssay.activities?.map(a =>
+                                      a.id === activity.id ? { ...a, name: e.target.value } : a
+                                    )
+                                  };
+                                  setSelectedEssay(updated);
+                                }}
+                                onBlur={() => saveEssayToFirebase(selectedEssay)}
+                                disabled={selectedEssay.status === 'submitted' || selectedEssay.status === 'reviewed'}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                placeholder="e.g., Varsity Basketball Team"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                              <textarea
+                                value={activity.description}
+                                onChange={(e) => {
+                                  const updated = {
+                                    ...selectedEssay,
+                                    activities: selectedEssay.activities?.map(a =>
+                                      a.id === activity.id ? { ...a, description: e.target.value } : a
+                                    )
+                                  };
+                                  setSelectedEssay(updated);
+                                }}
+                                onBlur={() => saveEssayToFirebase(selectedEssay)}
+                                disabled={selectedEssay.status === 'submitted' || selectedEssay.status === 'reviewed'}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                placeholder="Describe your role, achievements, and what you learned..."
+                                rows={4}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <List className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No activities added yet. Click "Add Activity" to get started.</p>
+                      </div>
+                    )}
+                    {selectedEssay.status !== 'submitted' && selectedEssay.status !== 'reviewed' && (
+                      <button
+                        onClick={() => {
+                          const newActivity: ActivityItem = {
+                            id: Date.now().toString(),
+                            name: '',
+                            description: ''
+                          };
+                          const updated = {
+                            ...selectedEssay,
+                            activities: [...(selectedEssay.activities || []), newActivity]
+                          };
+                          setSelectedEssay(updated);
+                          saveEssayToFirebase(updated);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-gray-600 hover:text-blue-600"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Activity
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments ? (
                 <div
-                  className="essay-container p-6 min-h-[500px] relative"
+                  ref={reviewedEssayRef}
+                  contentEditable={false}
+                  className="essay-container p-6 min-h-[500px] relative select-text cursor-text"
                   style={{
                     fontSize: `${selectedEssay.fontSize}pt`,
                     lineHeight: '1.6',
-                    fontFamily: selectedEssay.fontFamily,
-                    whiteSpace: 'pre-wrap'
+                    fontFamily: selectedEssay.fontFamily
                   }}
-                >
-                  {renderEssayWithHighlights(selectedEssay.content, selectedEssay.reviewData.inlineComments)}
-                </div>
+                />
               ) : (
                 <div
                   ref={editorRef}
