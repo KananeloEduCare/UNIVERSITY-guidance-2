@@ -254,14 +254,47 @@ const EssayReview: React.FC = () => {
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
-    if (selection && selection.toString().trim() && essayContentRef.current) {
-      const selectedTextContent = selection.toString();
+    if (selection && selection.toString().trim() && essayContentRef.current && selectedEssay) {
+      const selectedTextContent = selection.toString().trim();
       const range = selection.getRangeAt(0);
 
+      // Create a temporary clean version to calculate positions
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = cleanHtmlContent(selectedEssay.essay_content);
+      const cleanText = tempDiv.textContent || '';
+
+      // Get the text before selection in the current DOM
       const preSelectionRange = range.cloneRange();
       preSelectionRange.selectNodeContents(essayContentRef.current);
       preSelectionRange.setEnd(range.startContainer, range.startOffset);
-      const start = preSelectionRange.toString().length;
+      const textBeforeSelection = preSelectionRange.toString();
+
+      // Map from current position to clean text position
+      // We need to find where the selection actually is in the clean text
+      // by looking at the context before it
+      let start = 0;
+      let searchIndex = 0;
+
+      // Try to find a unique match by looking at surrounding context
+      const contextLength = Math.min(50, textBeforeSelection.length);
+      const context = textBeforeSelection.slice(-contextLength);
+
+      if (context) {
+        const contextIndex = cleanText.indexOf(context);
+        if (contextIndex >= 0) {
+          start = contextIndex + context.length;
+        }
+      }
+
+      // Now find the selected text starting from our calculated position
+      const selectedIndex = cleanText.indexOf(selectedTextContent, start);
+      if (selectedIndex >= 0) {
+        start = selectedIndex;
+      } else {
+        // Fallback: just search for the selected text
+        start = cleanText.indexOf(selectedTextContent);
+      }
+
       const end = start + selectedTextContent.length;
 
       const rect = range.getBoundingClientRect();
