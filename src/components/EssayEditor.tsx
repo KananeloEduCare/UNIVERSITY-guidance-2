@@ -296,7 +296,8 @@ const EssayEditor: React.FC = () => {
           universityName: essayData.universityName || undefined,
           fontFamily: essayData.fontFamily || 'Arial',
           fontSize: essayData.fontSize || 14,
-          reviewData: essayData.reviewData || undefined
+          reviewData: essayData.reviewData || undefined,
+          activities: essayData.activities || undefined
         });
       });
 
@@ -323,7 +324,8 @@ const EssayEditor: React.FC = () => {
       universityName: essay.universityName || null,
       fontFamily: essay.fontFamily,
       fontSize: essay.fontSize,
-      reviewData: essay.reviewData || null
+      reviewData: essay.reviewData || null,
+      activities: essay.activities || null
     });
   };
 
@@ -429,10 +431,10 @@ const EssayEditor: React.FC = () => {
   }, [selectedEssay?.id]);
 
   useEffect(() => {
-    if (selectedEssay && selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments) {
+    if (selectedEssay && selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments && reviewedEssayRef.current) {
       setTimeout(() => {
         applyHighlightsToReviewedEssay(selectedEssay.reviewData!.inlineComments);
-      }, 0);
+      }, 50);
     }
   }, [selectedEssay?.id, activeComment]);
 

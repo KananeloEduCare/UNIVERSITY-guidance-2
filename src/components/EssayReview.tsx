@@ -78,7 +78,7 @@ const EssayReview: React.FC = () => {
 
   useEffect(() => {
     if (selectedEssay && essayContentRef.current && inlineComments.length > 0) {
-      applyHighlightsToHtml();
+      setTimeout(() => applyHighlightsToHtml(), 50);
     }
   }, [selectedEssay, inlineComments]);
 
@@ -136,14 +136,13 @@ const EssayReview: React.FC = () => {
         mark.setAttribute('data-comment-id', comment.id);
         mark.title = comment.comment_text;
 
-        const tooltip = document.createElement('span');
-        tooltip.className = 'invisible group-hover:visible absolute bottom-full left-0 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg z-10 pointer-events-none';
-        tooltip.innerHTML = `<div class="font-semibold mb-1">${comment.counselor_name}</div><div>${comment.comment_text}</div>`;
-
-        mark.appendChild(tooltip);
-
         try {
           range.surroundContents(mark);
+
+          const tooltip = document.createElement('span');
+          tooltip.className = 'invisible group-hover:visible absolute bottom-full left-0 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg z-10 pointer-events-none';
+          tooltip.innerHTML = `<div class="font-semibold mb-1">${comment.counselor_name}</div><div>${comment.comment_text}</div>`;
+          mark.appendChild(tooltip);
         } catch (e) {
           console.warn('Could not apply highlight', e);
         }
@@ -454,7 +453,7 @@ const EssayReview: React.FC = () => {
       essayContentRef.current.innerHTML = cleanedHtml;
 
       if (inlineComments.length > 0) {
-        setTimeout(() => applyHighlightsToHtml(), 0);
+        setTimeout(() => applyHighlightsToHtml(), 50);
       }
     }
   }, [selectedEssay?.id]);
