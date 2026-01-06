@@ -91,9 +91,20 @@ const EssayReview: React.FC = () => {
 
     const textContent = container.textContent || '';
 
+    console.log('Applying highlights. Total text length:', textContent.length);
+    console.log('Comments to apply:', inlineComments.length);
+
     const sortedComments = [...inlineComments].sort((a, b) => b.start_position - a.start_position);
 
     sortedComments.forEach(comment => {
+      console.log('Applying comment:', {
+        id: comment.id,
+        start: comment.start_position,
+        end: comment.end_position,
+        text: comment.highlighted_text,
+        actualText: textContent.substring(comment.start_position, comment.end_position)
+      });
+
       const walker = document.createTreeWalker(
         container,
         NodeFilter.SHOW_TEXT,
@@ -111,7 +122,7 @@ const EssayReview: React.FC = () => {
         const node = walker.currentNode as Text;
         const nodeLength = node.length;
 
-        if (!foundStart && currentPos + nodeLength >= comment.start_position) {
+        if (!foundStart && currentPos + nodeLength > comment.start_position) {
           startNode = node;
           startOffset = comment.start_position - currentPos;
           foundStart = true;
@@ -127,6 +138,13 @@ const EssayReview: React.FC = () => {
       }
 
       if (startNode && endNode) {
+        console.log('Found nodes for highlight:', {
+          startNode: startNode.textContent?.substring(0, 20),
+          endNode: endNode.textContent?.substring(0, 20),
+          startOffset,
+          endOffset
+        });
+
         const range = document.createRange();
         range.setStart(startNode, startOffset);
         range.setEnd(endNode, endOffset);
@@ -143,9 +161,13 @@ const EssayReview: React.FC = () => {
           tooltip.className = 'invisible group-hover:visible absolute bottom-full left-0 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg z-10 pointer-events-none';
           tooltip.innerHTML = `<div class="font-semibold mb-1">${comment.counselor_name}</div><div>${comment.comment_text}</div>`;
           mark.appendChild(tooltip);
+
+          console.log('Successfully applied highlight');
         } catch (e) {
           console.warn('Could not apply highlight', e);
         }
+      } else {
+        console.warn('Could not find start/end nodes for comment:', comment);
       }
     });
   };
@@ -258,45 +280,53 @@ const EssayReview: React.FC = () => {
       const selectedTextContent = selection.toString();
       const range = selection.getRangeAt(0);
 
-      // Create a temporary clean version to calculate positions
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = cleanHtmlContent(selectedEssay.essay_content);
-      const cleanText = tempDiv.textContent || '';
+      // Get the clean text for position calculation
+      const cleanText = essayContentRef.current.textContent || '';
 
-      // Get the text before selection in the current DOM
-      const preSelectionRange = range.cloneRange();
-      preSelectionRange.selectNodeContents(essayContentRef.current);
-      preSelectionRange.setEnd(range.startContainer, range.startOffset);
-      const textBeforeSelection = preSelectionRange.toString();
+      // Walk through the DOM to find the actual character position
+      const walker = document.createTreeWalker(
+        essayContentRef.current,
+        NodeFilter.SHOW_TEXT,
+        null
+      );
 
-      // Find position in clean text
-      // Strategy: use a reasonable amount of context before the selection
-      const contextLength = Math.min(80, textBeforeSelection.length);
-      const contextBefore = textBeforeSelection.slice(-contextLength);
+      let currentPos = 0;
+      let startPos = -1;
 
-      let start = 0;
+      // Find the start position by walking through text nodes
+      while (walker.nextNode()) {
+        const node = walker.currentNode as Text;
 
-      if (contextBefore.length > 0) {
-        // Find where this context appears in the clean text
-        const contextIndex = cleanText.indexOf(contextBefore);
-        if (contextIndex >= 0) {
-          // The selection starts right after this context
-          start = contextIndex + contextBefore.length;
+        if (node === range.startContainer) {
+          startPos = currentPos + range.startOffset;
+          break;
+        } else if (range.startContainer.contains(node)) {
+          // Keep counting until we find the start container
+          currentPos += node.length;
         } else {
-          // Context not found exactly, try to find the selected text directly
-          start = cleanText.indexOf(selectedTextContent);
+          currentPos += node.length;
         }
-      } else {
-        // No context, search for the selected text
-        start = cleanText.indexOf(selectedTextContent);
       }
 
-      // Safety check
-      if (start < 0) {
-        start = 0;
+      // If we didn't find it by exact node match, try to find by content
+      if (startPos < 0) {
+        // Fallback: search for the selected text in clean text
+        startPos = cleanText.indexOf(selectedTextContent);
+        console.log('Using fallback position search');
       }
 
-      const end = start + selectedTextContent.length;
+      if (startPos < 0) {
+        startPos = 0;
+      }
+
+      const endPos = startPos + selectedTextContent.length;
+
+      console.log('Text selection:', {
+        text: selectedTextContent,
+        start: startPos,
+        end: endPos,
+        actualText: cleanText.substring(startPos, endPos)
+      });
 
       const rect = range.getBoundingClientRect();
       setCommentButtonPosition({
@@ -306,8 +336,8 @@ const EssayReview: React.FC = () => {
       setShowCommentButton(true);
       setSelectedText({
         text: selectedTextContent,
-        start,
-        end,
+        start: startPos,
+        end: endPos,
       });
     } else {
       setShowCommentButton(false);
