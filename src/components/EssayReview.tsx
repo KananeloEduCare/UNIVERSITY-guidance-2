@@ -255,7 +255,7 @@ const EssayReview: React.FC = () => {
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (selection && selection.toString().trim() && essayContentRef.current && selectedEssay) {
-      const selectedTextContent = selection.toString().trim();
+      const selectedTextContent = selection.toString();
       const range = selection.getRangeAt(0);
 
       // Create a temporary clean version to calculate positions
@@ -269,30 +269,31 @@ const EssayReview: React.FC = () => {
       preSelectionRange.setEnd(range.startContainer, range.startOffset);
       const textBeforeSelection = preSelectionRange.toString();
 
-      // Map from current position to clean text position
-      // We need to find where the selection actually is in the clean text
-      // by looking at the context before it
+      // Find position in clean text
+      // Strategy: use a reasonable amount of context before the selection
+      const contextLength = Math.min(80, textBeforeSelection.length);
+      const contextBefore = textBeforeSelection.slice(-contextLength);
+
       let start = 0;
-      let searchIndex = 0;
 
-      // Try to find a unique match by looking at surrounding context
-      const contextLength = Math.min(50, textBeforeSelection.length);
-      const context = textBeforeSelection.slice(-contextLength);
-
-      if (context) {
-        const contextIndex = cleanText.indexOf(context);
+      if (contextBefore.length > 0) {
+        // Find where this context appears in the clean text
+        const contextIndex = cleanText.indexOf(contextBefore);
         if (contextIndex >= 0) {
-          start = contextIndex + context.length;
+          // The selection starts right after this context
+          start = contextIndex + contextBefore.length;
+        } else {
+          // Context not found exactly, try to find the selected text directly
+          start = cleanText.indexOf(selectedTextContent);
         }
+      } else {
+        // No context, search for the selected text
+        start = cleanText.indexOf(selectedTextContent);
       }
 
-      // Now find the selected text starting from our calculated position
-      const selectedIndex = cleanText.indexOf(selectedTextContent, start);
-      if (selectedIndex >= 0) {
-        start = selectedIndex;
-      } else {
-        // Fallback: just search for the selected text
-        start = cleanText.indexOf(selectedTextContent);
+      // Safety check
+      if (start < 0) {
+        start = 0;
       }
 
       const end = start + selectedTextContent.length;
