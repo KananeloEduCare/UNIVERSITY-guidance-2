@@ -603,157 +603,18 @@ const EssayReview: React.FC = () => {
           </div>
         </div>
 
-        <div className="px-8 py-6 grid grid-cols-3 gap-6">
-          <div className="col-span-2">
-            <div className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm">
-              <h3 className="text-base font-semibold text-slate-800 mb-4">Essay Content</h3>
-              <div
-                ref={essayContentRef}
-                contentEditable={false}
-                className="prose prose-sm max-w-none text-slate-700 select-text cursor-text"
-                style={{
-                  fontFamily: selectedEssay.font_family,
-                  fontSize: `${selectedEssay.font_size}pt`,
-                  lineHeight: '1.6'
-                }}
-                onMouseUp={handleTextSelection}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {showCommentButton && commentButtonPosition && (
-              <div
-                className="fixed z-50"
-                style={{
-                  top: `${commentButtonPosition.top}px`,
-                  left: `${commentButtonPosition.left}px`,
-                  transform: 'translateX(-50%)'
-                }}
-              >
-                <button
-                  onClick={handleShowCommentBox}
-                  className="bg-[#04ADEE] text-white px-4 py-2 rounded-lg shadow-lg hover:bg-[#0396d5] transition-colors font-medium text-sm flex items-center gap-2"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Add Comment
-                </button>
-              </div>
-            )}
-
-            {selectedText && !showCommentButton && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-slate-700 mb-1">Selected Text</p>
-                    <p className="text-sm text-slate-600 italic">"{selectedText.text}"</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedText(null);
-                      window.getSelection()?.removeAllRanges();
-                    }}
-                    className="text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <textarea
-                  value={commentInput}
-                  onChange={(e) => setCommentInput(e.target.value)}
-                  placeholder="Add your comment..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm resize-none"
-                  rows={3}
-                />
-                <button
-                  onClick={handleAddInlineComment}
-                  disabled={!commentInput.trim()}
-                  className="mt-2 flex items-center gap-2 bg-[#04ADEE] text-white px-4 py-2 rounded-lg hover:bg-[#0396d5] transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="w-4 h-4" />
-                  Add Comment
-                </button>
-              </div>
-            )}
-
-            <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-              <h3 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" />
-                Inline Comments ({inlineComments.length})
-              </h3>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {inlineComments.length === 0 ? (
-                  <p className="text-sm text-slate-500 text-center py-4">
-                    No inline comments yet. Highlight text and click "Add Comment" to add one.
-                  </p>
-                ) : (
-                  inlineComments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      className="bg-yellow-50 border border-yellow-200 rounded-lg p-3"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <p className="text-xs font-semibold text-slate-700">
-                          {comment.counselor_name}
-                        </p>
-                        {selectedEssay.status !== 'reviewed' && (
-                          <button
-                            onClick={() => handleDeleteInlineComment(comment.id)}
-                            className="text-slate-400 hover:text-red-600 transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-600 italic mb-2">
-                        "{comment.highlighted_text}"
-                      </p>
-                      <p className="text-xs text-slate-700">{comment.comment_text}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-              <h3 className="text-base font-semibold text-slate-800 mb-3">General Feedback</h3>
-              <textarea
-                value={generalCommentInput}
-                onChange={(e) => setGeneralCommentInput(e.target.value)}
-                placeholder="Write your overall feedback for this essay..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm resize-none mb-3"
-                rows={4}
-              />
-              <button
-                onClick={handleAddGeneralComment}
-                disabled={!generalCommentInput.trim()}
-                className="w-full flex items-center justify-center gap-2 bg-[#04ADEE] text-white px-4 py-2 rounded-lg hover:bg-[#0396d5] transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send className="w-4 h-4" />
-                Add General Feedback
-              </button>
-
-              <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">
-                {generalComments.map((comment) => (
-                  <div
-                    key={comment.id}
-                    className="bg-slate-50 border border-slate-200 rounded-lg p-3"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-xs font-semibold text-slate-700">
-                        {comment.counselor_name}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {new Date(comment.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <p className="text-xs text-slate-700 leading-relaxed">
-                      {comment.comment_text}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <div className="px-8 py-6">
+          <div className="bg-white rounded-lg p-8 border border-slate-200 shadow-sm max-w-5xl mx-auto">
+            <div
+              ref={essayContentRef}
+              contentEditable={false}
+              className="prose prose-lg max-w-none text-slate-700"
+              style={{
+                fontFamily: selectedEssay.font_family,
+                fontSize: `${selectedEssay.font_size}pt`,
+                lineHeight: '1.6'
+              }}
+            />
           </div>
         </div>
 
