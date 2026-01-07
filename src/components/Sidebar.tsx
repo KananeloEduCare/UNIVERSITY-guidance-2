@@ -32,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, onLogout
     { id: 'scholarships' as Page, label: 'Scholarships', icon: Award },
     { id: 'applications' as Page, label: 'Applications', icon: FileText },
     { id: 'essay-editor' as Page, label: 'Essay Editor', icon: PenTool },
+    { id: 'essay-feedback' as Page, label: 'Essay Feedback', icon: FileText },
     { id: 'resources' as Page, label: 'Resources', icon: BookOpen },
     { id: 'counselors' as Page, label: 'Counselors', icon: MessageCircle },
     { id: 'chat' as Page, label: 'Inbox', icon: MessageSquare },

@@ -12,8 +12,9 @@ import Counselors from './Counselors';
 import Chat from './Chat';
 import EssayEditor from './EssayEditor';
 import MeetingBookingPage from './MeetingBookingPage';
+import StudentEssayFeedback from './StudentEssayFeedback';
 
-export type Page = 'profile' | 'admit-profiles' | 'scholarships' | 'applications' | 'resources' | 'counselors' | 'chat' | 'profile-details' | 'essay-editor' | 'meeting-booking';
+export type Page = 'profile' | 'admit-profiles' | 'scholarships' | 'applications' | 'resources' | 'counselors' | 'chat' | 'profile-details' | 'essay-editor' | 'meeting-booking' | 'essay-feedback';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -53,6 +54,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, user }) => {
         return <Chat userRole="student" />;
       case 'essay-editor':
         return <EssayEditor />;
+      case 'essay-feedback':
+        return <StudentEssayFeedback />;
       case 'profile-details':
         return selectedProfileId ? (
           <AdmitProfileDetailsPage
