@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, ArrowLeft, MessageSquare, Send, X, Check, Clock, AlertCircle, Star } from 'lucide-react';
+import { FileText, ArrowLeft, MessageSquare, Send, X, Check, Clock, AlertCircle, Star, ClipboardList } from 'lucide-react';
 import { database } from '../config/firebase';
 import { ref, onValue, set } from 'firebase/database';
 import { userStorage } from '../services/userStorage';
+import { rubricService } from '../services/rubricService';
+import RubricManager from './RubricManager';
 
 interface Essay {
   id: string;
@@ -55,10 +57,13 @@ const EssayReview: React.FC = () => {
   const [showGradeModal, setShowGradeModal] = useState(false);
   const [showCommentButton, setShowCommentButton] = useState(false);
   const [commentButtonPosition, setCommentButtonPosition] = useState<{ top: number; left: number } | null>(null);
+  const [showRubricManager, setShowRubricManager] = useState(false);
+  const [hasRubric, setHasRubric] = useState(false);
   const essayContentRef = useRef<HTMLDivElement>(null);
 
   const currentUser = userStorage.getStoredUser();
   const counselorName = currentUser?.name || 'University Counselor';
+  const counselorId = currentUser?.id || '';
 
   const cleanHtmlContent = (html: string): string => {
     const div = document.createElement('div');
@@ -186,6 +191,21 @@ const EssayReview: React.FC = () => {
 
     return `${day}${suffix} ${month} ${year} at ${formattedHours}:${minutes} ${ampm}`;
   };
+
+  useEffect(() => {
+    const checkRubric = async () => {
+      if (counselorId) {
+        try {
+          const rubricItems = await rubricService.getRubricItems(counselorId);
+          setHasRubric(rubricItems.length > 0);
+        } catch (error) {
+          console.error('Error checking rubric:', error);
+        }
+      }
+    };
+
+    checkRubric();
+  }, [counselorId]);
 
   useEffect(() => {
     const essaysRef = ref(database, 'University Data/Essays');
@@ -690,12 +710,33 @@ const EssayReview: React.FC = () => {
     );
   }
 
+  const handleRubricManagerClose = async () => {
+    setShowRubricManager(false);
+    if (counselorId) {
+      try {
+        const rubricItems = await rubricService.getRubricItems(counselorId);
+        setHasRubric(rubricItems.length > 0);
+      } catch (error) {
+        console.error('Error checking rubric:', error);
+      }
+    }
+  };
+
   return (
     <div className="-mx-8 -my-6">
       <div className="bg-gradient-to-r from-[#04ADEE]/10 via-emerald-50 to-[#04ADEE]/10 border-b border-[#04ADEE]/20 px-8 py-5">
-        <div className="flex items-center gap-3 mb-4">
-          <FileText className="w-6 h-6 text-[#04ADEE]" />
-          <h1 className="text-2xl font-bold text-slate-900">Essay Review</h1>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <FileText className="w-6 h-6 text-[#04ADEE]" />
+            <h1 className="text-2xl font-bold text-slate-900">Essay Review</h1>
+          </div>
+          <button
+            onClick={() => setShowRubricManager(true)}
+            className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium text-sm"
+          >
+            <ClipboardList className="w-4 h-4" />
+            {hasRubric ? 'Edit Rubric' : 'Set Rubric'}
+          </button>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-4">
@@ -812,6 +853,13 @@ const EssayReview: React.FC = () => {
           )}
         </div>
       </div>
+
+      {showRubricManager && (
+        <RubricManager
+          counselorId={counselorId}
+          onClose={handleRubricManagerClose}
+        />
+      )}
     </div>
   );
 };
