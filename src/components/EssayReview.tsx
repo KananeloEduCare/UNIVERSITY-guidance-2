@@ -21,6 +21,18 @@ interface Essay {
   reviewed_at?: string;
 }
 
+interface RubricCriterion {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface CriterionGrade {
+  rating: number;
+  whatsMissing: string;
+  howToImprove: string;
+}
+
 interface InlineComment {
   id: string;
   counselor_name: string;
@@ -58,6 +70,9 @@ const EssayReview: React.FC = () => {
   const [commentButtonPosition, setCommentButtonPosition] = useState<{ top: number; left: number } | null>(null);
   const [showRubricManager, setShowRubricManager] = useState(false);
   const [hasRubric, setHasRubric] = useState(false);
+  const [rubricCriteria, setRubricCriteria] = useState<RubricCriterion[]>([]);
+  const [criterionGrades, setCriterionGrades] = useState<{ [key: string]: CriterionGrade }>({});
+  const [showGradingInterface, setShowGradingInterface] = useState(false);
   const essayContentRef = useRef<HTMLDivElement>(null);
 
   const currentUser = userStorage.getStoredUser();
@@ -462,9 +477,109 @@ const EssayReview: React.FC = () => {
     setGeneralCommentInput('');
   };
 
+  const loadRubricForGrading = async () => {
+    if (!counselorName) return;
+
+    const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
+    onValue(rubricRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const criteria: RubricCriterion[] = Object.keys(data).map(key => ({
+          id: key,
+          name: data[key].name,
+          description: data[key].description
+        }));
+        setRubricCriteria(criteria);
+
+        const initialGrades: { [key: string]: CriterionGrade } = {};
+        criteria.forEach(criterion => {
+          initialGrades[criterion.id] = {
+            rating: 0,
+            whatsMissing: '',
+            howToImprove: ''
+          };
+        });
+        setCriterionGrades(initialGrades);
+      }
+    }, { onlyOnce: true });
+  };
+
+  const handleGradeEssay = async () => {
+    if (!selectedEssay) return;
+
+    if (!hasRubric) {
+      alert('Please set up your grading rubric first before grading essays.');
+      return;
+    }
+
+    await loadRubricForGrading();
+    setShowGradingInterface(true);
+  };
+
   const handleMarkAsReviewed = () => {
     if (!selectedEssay) return;
     setShowGradeModal(true);
+  };
+
+  const updateCriterionGrade = (criterionId: string, field: keyof CriterionGrade, value: string | number) => {
+    setCriterionGrades(prev => ({
+      ...prev,
+      [criterionId]: {
+        ...prev[criterionId],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSubmitGrade = async () => {
+    if (!selectedEssay) return;
+
+    const allGraded = Object.values(criterionGrades).every(grade => grade.rating > 0);
+    if (!allGraded) {
+      alert('Please rate all criteria before submitting.');
+      return;
+    }
+
+    const allFeedbackProvided = Object.values(criterionGrades).every(
+      grade => grade.whatsMissing.trim() && grade.howToImprove.trim()
+    );
+    if (!allFeedbackProvided) {
+      alert('Please provide feedback for all criteria.');
+      return;
+    }
+
+    const totalPossibleScore = rubricCriteria.length * 5;
+    const earnedScore = Object.values(criterionGrades).reduce((sum, grade) => sum + grade.rating, 0);
+
+    const [studentName, essayTitle] = selectedEssay.id.split('___');
+    const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
+
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(essayRef, (snap) => resolve(snap), { onlyOnce: true });
+    });
+
+    if (snapshot.exists()) {
+      const essayData = snapshot.val();
+      await set(essayRef, {
+        ...essayData,
+        status: 'reviewed',
+        reviewData: {
+          reviewedBy: counselorName,
+          reviewedAt: new Date().toISOString(),
+          totalPoints: totalPossibleScore,
+          score: earnedScore,
+          rubricGrades: criterionGrades
+        }
+      });
+    }
+
+    const updatedEssays = essays.map(e =>
+      e.id === selectedEssay.id ? { ...e, status: 'reviewed' as const, total_points: totalPossibleScore, score: earnedScore } : e
+    );
+    setEssays(updatedEssays);
+    setSelectedEssay({ ...selectedEssay, status: 'reviewed', total_points: totalPossibleScore, score: earnedScore });
+    setShowGradingInterface(false);
+    setCriterionGrades({});
   };
 
   const handleSaveGrade = async () => {
@@ -609,31 +724,156 @@ const EssayReview: React.FC = () => {
               {getStatusBadge(selectedEssay.status)}
               {selectedEssay.status !== 'reviewed' && (
                 <button
-                  onClick={handleMarkAsReviewed}
+                  onClick={handleGradeEssay}
                   className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm"
                 >
-                  <Check className="w-4 h-4" />
-                  Mark as Reviewed
+                  <Star className="w-4 h-4" />
+                  Grade Essay
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        <div className="px-8 py-6">
-          <div className="bg-white rounded-lg p-8 border border-slate-200 shadow-sm max-w-5xl mx-auto">
-            <div
-              ref={essayContentRef}
-              contentEditable={false}
-              className="prose prose-lg max-w-none text-slate-700"
-              style={{
-                fontFamily: selectedEssay.font_family,
-                fontSize: `${selectedEssay.font_size}pt`,
-                lineHeight: '1.6'
-              }}
-            />
+        {showGradingInterface ? (
+          <div className="px-8 py-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900">Essay Content</h3>
+                  <button
+                    onClick={() => setShowGradingInterface(false)}
+                    className="text-sm text-[#04ADEE] hover:text-[#0396d5] font-medium"
+                  >
+                    View Full Essay
+                  </button>
+                </div>
+                <div
+                  className="prose prose-sm max-w-none text-slate-700 max-h-[70vh] overflow-y-auto"
+                  style={{
+                    fontFamily: selectedEssay.font_family,
+                    fontSize: `${selectedEssay.font_size}pt`,
+                    lineHeight: '1.6'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: selectedEssay.essay_content }}
+                />
+              </div>
+
+              <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+                <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg p-4 border border-emerald-200 sticky top-0 z-10">
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">Grade Essay with Rubric</h3>
+                  <p className="text-sm text-slate-600">Rate each criterion and provide detailed feedback</p>
+                </div>
+
+                {rubricCriteria.map((criterion, index) => (
+                  <div key={criterion.id} className="bg-white rounded-lg p-5 border border-slate-200 shadow-sm">
+                    <div className="flex items-start gap-3 mb-4">
+                      <span className="inline-flex items-center justify-center w-7 h-7 bg-[#04ADEE] text-white text-sm font-bold rounded-full flex-shrink-0">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1">
+                        <h4 className="text-base font-bold text-slate-900 mb-1">{criterion.name}</h4>
+                        <p className="text-sm text-slate-600">{criterion.description}</p>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Rating (1-5)</label>
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4, 5].map((rating) => (
+                          <button
+                            key={rating}
+                            onClick={() => updateCriterionGrade(criterion.id, 'rating', rating)}
+                            className={`flex-1 px-4 py-3 rounded-lg font-bold text-sm transition-all ${
+                              criterionGrades[criterion.id]?.rating === rating
+                                ? 'bg-[#04ADEE] text-white shadow-md'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            {rating}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        What's missing? (Why didn't they get a 5?)
+                      </label>
+                      <textarea
+                        value={criterionGrades[criterion.id]?.whatsMissing || ''}
+                        onChange={(e) => updateCriterionGrade(criterion.id, 'whatsMissing', e.target.value)}
+                        placeholder="Explain what elements are missing or could be improved..."
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm resize-none"
+                        rows={3}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        How to improve to a 5?
+                      </label>
+                      <textarea
+                        value={criterionGrades[criterion.id]?.howToImprove || ''}
+                        onChange={(e) => updateCriterionGrade(criterion.id, 'howToImprove', e.target.value)}
+                        placeholder="Provide specific suggestions on how to reach a perfect score..."
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm resize-none"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <div className="sticky bottom-0 bg-white border-t border-slate-200 pt-4">
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowGradingInterface(false);
+                        setCriterionGrades({});
+                      }}
+                      className="flex-1 px-4 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitGrade}
+                      className="flex-1 px-4 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      Submit Grade
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="px-8 py-6">
+            {rubricCriteria.length > 0 && selectedEssay.status !== 'reviewed' && (
+              <div className="mb-4 flex justify-center">
+                <button
+                  onClick={() => setShowGradingInterface(true)}
+                  className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm shadow-md"
+                >
+                  <Star className="w-4 h-4" />
+                  Back to Grading
+                </button>
+              </div>
+            )}
+            <div className="bg-white rounded-lg p-8 border border-slate-200 shadow-sm max-w-5xl mx-auto">
+              <div
+                ref={essayContentRef}
+                contentEditable={false}
+                className="prose prose-lg max-w-none text-slate-700"
+                style={{
+                  fontFamily: selectedEssay.font_family,
+                  fontSize: `${selectedEssay.font_size}pt`,
+                  lineHeight: '1.6'
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {showGradeModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
