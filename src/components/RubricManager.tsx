@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, GripVertical, Save } from 'lucide-react';
-import { rubricService, RubricItem } from '../services/rubricService';
+import { X, Plus, Trash2, GripVertical, Save, CheckCircle } from 'lucide-react';
+import { database } from '../config/firebase';
+import { ref, onValue, set } from 'firebase/database';
+
+interface RubricItem {
+  id: string;
+  name: string;
+  description: string;
+}
 
 interface RubricManagerProps {
-  counselorId: string;
+  counselorName: string;
   onClose: () => void;
 }
 
-const RubricManager: React.FC<RubricManagerProps> = ({ counselorId, onClose }) => {
+const RubricManager: React.FC<RubricManagerProps> = ({ counselorName, onClose }) => {
   const [rubricItems, setRubricItems] = useState<RubricItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -16,47 +23,63 @@ const RubricManager: React.FC<RubricManagerProps> = ({ counselorId, onClose }) =
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
 
   useEffect(() => {
     loadRubricItems();
-  }, [counselorId]);
+  }, [counselorName]);
 
   const loadRubricItems = async () => {
     try {
       setLoading(true);
-      const items = await rubricService.getRubricItems(counselorId);
-      setRubricItems(items);
+      const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
+
+      onValue(rubricRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const items: RubricItem[] = Object.keys(data).map(key => ({
+            id: key,
+            name: data[key].name,
+            description: data[key].description
+          }));
+          setRubricItems(items);
+        } else {
+          setRubricItems([]);
+        }
+        setLoading(false);
+      }, { onlyOnce: true });
     } catch (error) {
       console.error('Error loading rubric items:', error);
-    } finally {
       setLoading(false);
     }
   };
 
-  const handleAddItem = async () => {
+  const showSuccessNotification = (message: string) => {
+    setNotificationMessage(message);
+    setShowNotification(true);
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 3000);
+  };
+
+  const handleAddItem = () => {
     if (!newItemName.trim() || !newItemDescription.trim()) {
-      alert('Please enter both a name and description for the rubric item.');
+      setNotificationMessage('Please enter both a name and description');
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
       return;
     }
 
-    try {
-      setSaving(true);
-      const sortOrder = rubricItems.length;
-      const newItem = await rubricService.addRubricItem(
-        counselorId,
-        newItemName.trim(),
-        newItemDescription.trim(),
-        sortOrder
-      );
-      setRubricItems([...rubricItems, newItem]);
-      setNewItemName('');
-      setNewItemDescription('');
-    } catch (error) {
-      console.error('Error adding rubric item:', error);
-      alert('Failed to add rubric item. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    const newItem: RubricItem = {
+      id: Date.now().toString(),
+      name: newItemName.trim(),
+      description: newItemDescription.trim()
+    };
+
+    setRubricItems([...rubricItems, newItem]);
+    setNewItemName('');
+    setNewItemDescription('');
   };
 
   const handleEditItem = (item: RubricItem) => {
@@ -65,43 +88,52 @@ const RubricManager: React.FC<RubricManagerProps> = ({ counselorId, onClose }) =
     setEditDescription(item.description);
   };
 
-  const handleSaveEdit = async (itemId: string) => {
+  const handleSaveEdit = (itemId: string) => {
     if (!editName.trim() || !editDescription.trim()) {
-      alert('Please enter both a name and description.');
+      setNotificationMessage('Please enter both a name and description');
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
       return;
     }
 
-    try {
-      setSaving(true);
-      const updatedItem = await rubricService.updateRubricItem(
-        itemId,
-        editName.trim(),
-        editDescription.trim()
-      );
-      setRubricItems(rubricItems.map(item => item.id === itemId ? updatedItem : item));
-      setEditingItem(null);
-      setEditName('');
-      setEditDescription('');
-    } catch (error) {
-      console.error('Error updating rubric item:', error);
-      alert('Failed to update rubric item. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    setRubricItems(rubricItems.map(item =>
+      item.id === itemId
+        ? { ...item, name: editName.trim(), description: editDescription.trim() }
+        : item
+    ));
+    setEditingItem(null);
+    setEditName('');
+    setEditDescription('');
   };
 
-  const handleDeleteItem = async (itemId: string) => {
-    if (!confirm('Are you sure you want to delete this rubric item?')) {
-      return;
-    }
+  const handleDeleteItem = (itemId: string) => {
+    setRubricItems(rubricItems.filter(item => item.id !== itemId));
+  };
 
+  const handleSaveToFirebase = async () => {
     try {
       setSaving(true);
-      await rubricService.deleteRubricItem(itemId);
-      setRubricItems(rubricItems.filter(item => item.id !== itemId));
+      const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
+
+      const rubricData: { [key: string]: { name: string; description: string } } = {};
+      rubricItems.forEach(item => {
+        rubricData[item.id] = {
+          name: item.name,
+          description: item.description
+        };
+      });
+
+      await set(rubricRef, rubricData);
+      showSuccessNotification('Rubric saved successfully!');
+
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (error) {
-      console.error('Error deleting rubric item:', error);
-      alert('Failed to delete rubric item. Please try again.');
+      console.error('Error saving rubric:', error);
+      setNotificationMessage('Failed to save rubric. Please try again.');
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
     } finally {
       setSaving(false);
     }
@@ -119,12 +151,23 @@ const RubricManager: React.FC<RubricManagerProps> = ({ counselorId, onClose }) =
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      {showNotification && (
+        <div className="fixed top-4 right-4 z-[60] animate-slide-in">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 p-4 flex items-center gap-3 min-w-[300px]">
+            <div className="flex-shrink-0">
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
+            </div>
+            <p className="text-sm font-medium text-slate-900">{notificationMessage}</p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="bg-gradient-to-r from-[#04ADEE] to-emerald-500 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-white">Essay Grading Rubric</h2>
+        <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-slate-900">Essay Grading Rubric</h2>
           <button
             onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-2 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -165,7 +208,7 @@ const RubricManager: React.FC<RubricManagerProps> = ({ counselorId, onClose }) =
                 </div>
                 <button
                   onClick={handleAddItem}
-                  disabled={saving || !newItemName.trim() || !newItemDescription.trim()}
+                  disabled={!newItemName.trim() || !newItemDescription.trim()}
                   className="w-full flex items-center justify-center gap-2 bg-[#04ADEE] text-white px-4 py-2 rounded-lg hover:bg-[#0396d5] transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-4 h-4" />
@@ -217,8 +260,7 @@ const RubricManager: React.FC<RubricManagerProps> = ({ counselorId, onClose }) =
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleSaveEdit(item.id)}
-                          disabled={saving}
-                          className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm disabled:opacity-50"
+                          className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm"
                         >
                           <Save className="w-4 h-4" />
                           Save Changes
@@ -257,8 +299,7 @@ const RubricManager: React.FC<RubricManagerProps> = ({ counselorId, onClose }) =
                             </button>
                             <button
                               onClick={() => handleDeleteItem(item.id)}
-                              disabled={saving}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -289,10 +330,11 @@ const RubricManager: React.FC<RubricManagerProps> = ({ counselorId, onClose }) =
 
         <div className="border-t border-slate-200 px-6 py-4 bg-slate-50">
           <button
-            onClick={onClose}
-            className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium text-sm"
+            onClick={handleSaveToFirebase}
+            disabled={saving}
+            className="w-full px-4 py-2 bg-[#04ADEE] text-white rounded-lg hover:bg-[#0396d5] transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Done
+            {saving ? 'Saving...' : 'Done'}
           </button>
         </div>
       </div>

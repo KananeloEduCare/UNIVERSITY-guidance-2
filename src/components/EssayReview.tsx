@@ -3,7 +3,6 @@ import { FileText, ArrowLeft, MessageSquare, Send, X, Check, Clock, AlertCircle,
 import { database } from '../config/firebase';
 import { ref, onValue, set } from 'firebase/database';
 import { userStorage } from '../services/userStorage';
-import { rubricService } from '../services/rubricService';
 import RubricManager from './RubricManager';
 
 interface Essay {
@@ -193,19 +192,17 @@ const EssayReview: React.FC = () => {
   };
 
   useEffect(() => {
-    const checkRubric = async () => {
-      if (counselorId) {
-        try {
-          const rubricItems = await rubricService.getRubricItems(counselorId);
-          setHasRubric(rubricItems.length > 0);
-        } catch (error) {
-          console.error('Error checking rubric:', error);
-        }
+    const checkRubric = () => {
+      if (counselorName) {
+        const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
+        onValue(rubricRef, (snapshot) => {
+          setHasRubric(snapshot.exists());
+        }, { onlyOnce: true });
       }
     };
 
     checkRubric();
-  }, [counselorId]);
+  }, [counselorName]);
 
   useEffect(() => {
     const essaysRef = ref(database, 'University Data/Essays');
@@ -710,15 +707,13 @@ const EssayReview: React.FC = () => {
     );
   }
 
-  const handleRubricManagerClose = async () => {
+  const handleRubricManagerClose = () => {
     setShowRubricManager(false);
-    if (counselorId) {
-      try {
-        const rubricItems = await rubricService.getRubricItems(counselorId);
-        setHasRubric(rubricItems.length > 0);
-      } catch (error) {
-        console.error('Error checking rubric:', error);
-      }
+    if (counselorName) {
+      const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
+      onValue(rubricRef, (snapshot) => {
+        setHasRubric(snapshot.exists());
+      }, { onlyOnce: true });
     }
   };
 
@@ -856,7 +851,7 @@ const EssayReview: React.FC = () => {
 
       {showRubricManager && (
         <RubricManager
-          counselorId={counselorId}
+          counselorName={counselorName}
           onClose={handleRubricManagerClose}
         />
       )}
