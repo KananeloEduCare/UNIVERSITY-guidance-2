@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { FileText, ArrowLeft, BookOpen, ChevronDown, ChevronUp, Check, Save, Star } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { FileText, ArrowLeft, MessageSquare, Send, X, Check, Clock, AlertCircle, Star } from 'lucide-react';
 import { database } from '../config/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, set } from 'firebase/database';
 import { userStorage } from '../services/userStorage';
-import { rubricService, Rubric, RubricCriterion, EssayReview as EssayReviewType, CriterionFeedback } from '../services/rubricService';
-import RubricManagement from './RubricManagement';
 
 interface Essay {
   id: string;
@@ -15,38 +13,49 @@ interface Essay {
   university_name: string | null;
   submission_date: string;
   status: 'draft' | 'submitted' | 'reviewed';
+  total_points: number | null;
+  score: number | null;
   font_family: string;
   font_size: number;
+  reviewed_at?: string;
+}
+
+interface InlineComment {
+  id: string;
+  counselor_name: string;
+  highlighted_text: string;
+  start_position: number;
+  end_position: number;
+  comment_text: string;
+}
+
+interface GeneralComment {
+  id: string;
+  counselor_name: string;
+  comment_text: string;
+  created_at: string;
 }
 
 const EssayReview: React.FC = () => {
   const [essays, setEssays] = useState<Essay[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEssay, setSelectedEssay] = useState<Essay | null>(null);
+  const [inlineComments, setInlineComments] = useState<InlineComment[]>([]);
+  const [generalComments, setGeneralComments] = useState<GeneralComment[]>([]);
+  const [selectedText, setSelectedText] = useState<{
+    text: string;
+    start: number;
+    end: number;
+  } | null>(null);
+  const [commentInput, setCommentInput] = useState('');
+  const [generalCommentInput, setGeneralCommentInput] = useState('');
+  const [totalPoints, setTotalPoints] = useState<string>('100');
+  const [score, setScore] = useState<string>('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_review' | 'reviewed'>('all');
-
-  const [showRubricManagement, setShowRubricManagement] = useState(false);
-  const [currentReview, setCurrentReview] = useState<EssayReviewType | null>(null);
-  const [selectedRubric, setSelectedRubric] = useState<Rubric | null>(null);
-  const [criteria, setCriteria] = useState<RubricCriterion[]>([]);
-  const [feedbackList, setFeedbackList] = useState<CriterionFeedback[]>([]);
-  const [expandedCriteria, setExpandedCriteria] = useState<Set<string>>(new Set());
-
-  const [overallAssessment, setOverallAssessment] = useState('');
-  const [revisionPriorities, setRevisionPriorities] = useState<string[]>(['', '', '']);
-
-  const [editingFeedback, setEditingFeedback] = useState<{
-    [key: string]: {
-      score: number | null;
-      explanation: string;
-      guidance: string;
-      reference: string;
-    };
-  }>({});
+  const essayContentRef = useRef<HTMLDivElement>(null);
 
   const currentUser = userStorage.getStoredUser();
   const counselorName = currentUser?.name || 'University Counselor';
-  const counselorId = currentUser?.id || 'demo-counselor-id';
 
   useEffect(() => {
     const essaysRef = ref(database, 'University Data/Essays');
@@ -77,8 +86,11 @@ const EssayReview: React.FC = () => {
               university_name: essayData.universityName || null,
               submission_date: essayData.submittedAt || essayData.lastModified || new Date().toISOString().split('T')[0],
               status: essayData.status || 'submitted',
+              total_points: essayData.totalPoints || null,
+              score: essayData.score || null,
               font_family: essayData.fontFamily || 'Arial',
-              font_size: essayData.fontSize || 14
+              font_size: essayData.fontSize || 14,
+              reviewed_at: essayData.reviewedAt
             });
           }
         });
@@ -94,202 +106,245 @@ const EssayReview: React.FC = () => {
 
   useEffect(() => {
     if (selectedEssay) {
-      loadReview();
+      loadComments();
+      if (selectedEssay.total_points) setTotalPoints(selectedEssay.total_points.toString());
+      if (selectedEssay.score) setScore(selectedEssay.score.toString());
     }
   }, [selectedEssay?.id]);
 
-  const loadReview = async () => {
+  const loadComments = () => {
     if (!selectedEssay) return;
 
-    try {
-      const review = await rubricService.getReview(selectedEssay.student_name, selectedEssay.essay_title);
+    const commentsRef = ref(database, `University Data/Essays/${selectedEssay.student_name}/${selectedEssay.essay_title}/comments`);
 
-      if (review) {
-        setCurrentReview(review);
-        const rubric = await rubricService.getRubricById(review.rubric_id);
-        if (rubric) {
-          setSelectedRubric(rubric);
-          const criteriaData = await rubricService.getCriteria(rubric.id);
-          setCriteria(criteriaData);
-          const feedbackData = await rubricService.getCriterionFeedback(review.id);
-          setFeedbackList(feedbackData);
+    onValue(commentsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const commentsData = snapshot.val();
 
-          setOverallAssessment(review.overall_assessment || '');
-          setRevisionPriorities(review.revision_priorities || ['', '', '']);
+        const inline: InlineComment[] = [];
+        const general: GeneralComment[] = [];
 
-          const editData: typeof editingFeedback = {};
-          feedbackData.forEach(feedback => {
-            editData[feedback.criterion_id] = {
-              score: feedback.score,
-              explanation: feedback.score_explanation || '',
-              guidance: feedback.improvement_guidance || '',
-              reference: feedback.reference_section || 'entire_essay'
-            };
+        if (commentsData.inline) {
+          Object.keys(commentsData.inline).forEach((key) => {
+            inline.push({ id: key, ...commentsData.inline[key] });
           });
-          setEditingFeedback(editData);
         }
+
+        if (commentsData.general) {
+          Object.keys(commentsData.general).forEach((key) => {
+            general.push({ id: key, ...commentsData.general[key] });
+          });
+        }
+
+        setInlineComments(inline.sort((a, b) => a.start_position - b.start_position));
+        setGeneralComments(general.sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ));
       } else {
-        setCurrentReview(null);
-        setSelectedRubric(null);
-        setCriteria([]);
-        setFeedbackList([]);
+        setInlineComments([]);
+        setGeneralComments([]);
       }
-    } catch (error) {
-      console.error('Error loading review:', error);
+    });
+  };
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      setSelectedText(null);
+      return;
+    }
+
+    const selectedString = selection.toString().trim();
+    if (!selectedString) {
+      setSelectedText(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const container = essayContentRef.current;
+    if (!container) return;
+
+    const textContent = container.innerText;
+    const startOffset = textContent.indexOf(selectedString);
+
+    if (startOffset !== -1) {
+      setSelectedText({
+        text: selectedString,
+        start: startOffset,
+        end: startOffset + selectedString.length
+      });
     }
   };
 
-  const handleSelectRubricForReview = async (rubricId: string) => {
+  const addInlineComment = async () => {
+    if (!selectedEssay || !selectedText || !commentInput.trim()) return;
+
+    const newComment: InlineComment = {
+      id: Date.now().toString(),
+      counselor_name: counselorName,
+      highlighted_text: selectedText.text,
+      start_position: selectedText.start,
+      end_position: selectedText.end,
+      comment_text: commentInput.trim()
+    };
+
+    const commentPath = `University Data/Essays/${selectedEssay.student_name}/${selectedEssay.essay_title}/comments/inline/${newComment.id}`;
+    await set(ref(database, commentPath), {
+      counselor_name: newComment.counselor_name,
+      highlighted_text: newComment.highlighted_text,
+      start_position: newComment.start_position,
+      end_position: newComment.end_position,
+      comment_text: newComment.comment_text
+    });
+
+    setCommentInput('');
+    setSelectedText(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const addGeneralComment = async () => {
+    if (!selectedEssay || !generalCommentInput.trim()) return;
+
+    const newComment: GeneralComment = {
+      id: Date.now().toString(),
+      counselor_name: counselorName,
+      comment_text: generalCommentInput.trim(),
+      created_at: new Date().toISOString()
+    };
+
+    const commentPath = `University Data/Essays/${selectedEssay.student_name}/${selectedEssay.essay_title}/comments/general/${newComment.id}`;
+    await set(ref(database, commentPath), {
+      counselor_name: newComment.counselor_name,
+      comment_text: newComment.comment_text,
+      created_at: newComment.created_at
+    });
+
+    setGeneralCommentInput('');
+  };
+
+  const deleteInlineComment = async (commentId: string) => {
+    if (!selectedEssay) return;
+    const commentPath = `University Data/Essays/${selectedEssay.student_name}/${selectedEssay.essay_title}/comments/inline/${commentId}`;
+    await set(ref(database, commentPath), null);
+  };
+
+  const deleteGeneralComment = async (commentId: string) => {
+    if (!selectedEssay) return;
+    const commentPath = `University Data/Essays/${selectedEssay.student_name}/${selectedEssay.essay_title}/comments/general/${commentId}`;
+    await set(ref(database, commentPath), null);
+  };
+
+  const submitReview = async () => {
     if (!selectedEssay) return;
 
-    try {
-      const review = await rubricService.createReview(
-        selectedEssay.student_name,
-        selectedEssay.essay_title,
-        rubricId,
-        counselorId
-      );
+    const totalPointsNum = parseFloat(totalPoints);
+    const scoreNum = parseFloat(score);
 
-      setShowRubricManagement(false);
-      await loadReview();
-    } catch (error) {
-      console.error('Error creating review:', error);
+    if (isNaN(totalPointsNum) || isNaN(scoreNum)) {
+      alert('Please enter valid numbers for total points and score');
+      return;
     }
+
+    if (scoreNum > totalPointsNum) {
+      alert('Score cannot be greater than total points');
+      return;
+    }
+
+    const essayPath = `University Data/Essays/${selectedEssay.student_name}/${selectedEssay.essay_title}`;
+    await set(ref(database, essayPath), {
+      ...selectedEssay,
+      status: 'reviewed',
+      totalPoints: totalPointsNum,
+      score: scoreNum,
+      reviewedAt: new Date().toISOString()
+    });
+
+    alert('Review submitted successfully!');
+    setSelectedEssay(null);
+  };
+
+  const renderEssayWithHighlights = () => {
+    if (!selectedEssay) return null;
+
+    const content = selectedEssay.essay_content;
+    const text = content.replace(/<[^>]*>/g, '');
+
+    if (inlineComments.length === 0) {
+      return (
+        <div
+          style={{
+            fontFamily: selectedEssay.font_family,
+            fontSize: `${selectedEssay.font_size}px`,
+            lineHeight: '1.6',
+            whiteSpace: 'pre-wrap'
+          }}
+        >
+          {text}
+        </div>
+      );
+    }
+
+    const segments: { text: string; isHighlighted: boolean; commentId?: string }[] = [];
+    let lastIndex = 0;
+
+    inlineComments.forEach((comment) => {
+      if (comment.start_position > lastIndex) {
+        segments.push({
+          text: text.substring(lastIndex, comment.start_position),
+          isHighlighted: false
+        });
+      }
+
+      segments.push({
+        text: text.substring(comment.start_position, comment.end_position),
+        isHighlighted: true,
+        commentId: comment.id
+      });
+
+      lastIndex = comment.end_position;
+    });
+
+    if (lastIndex < text.length) {
+      segments.push({
+        text: text.substring(lastIndex),
+        isHighlighted: false
+      });
+    }
+
+    return (
+      <div
+        style={{
+          fontFamily: selectedEssay.font_family,
+          fontSize: `${selectedEssay.font_size}px`,
+          lineHeight: '1.6',
+          whiteSpace: 'pre-wrap'
+        }}
+      >
+        {segments.map((segment, index) => (
+          segment.isHighlighted ? (
+            <mark
+              key={index}
+              className="bg-yellow-200 cursor-pointer hover:bg-yellow-300 transition-colors"
+              title="Click to view comment"
+            >
+              {segment.text}
+            </mark>
+          ) : (
+            <span key={index}>{segment.text}</span>
+          )
+        ))}
+      </div>
+    );
   };
 
   const handleEssayClick = (essayId: string) => {
     const essay = essays.find(e => e.id === essayId);
     if (essay) {
       setSelectedEssay(essay);
-      setExpandedCriteria(new Set());
+      setSelectedText(null);
+      setCommentInput('');
+      setGeneralCommentInput('');
     }
-  };
-
-  const toggleCriterion = (criterionId: string) => {
-    const newExpanded = new Set(expandedCriteria);
-    if (newExpanded.has(criterionId)) {
-      newExpanded.delete(criterionId);
-    } else {
-      newExpanded.add(criterionId);
-    }
-    setExpandedCriteria(newExpanded);
-  };
-
-  const updateFeedbackField = (criterionId: string, field: string, value: any) => {
-    setEditingFeedback(prev => ({
-      ...prev,
-      [criterionId]: {
-        ...prev[criterionId],
-        [field]: value
-      }
-    }));
-  };
-
-  const saveCriterionFeedback = async (criterionId: string) => {
-    if (!currentReview) return;
-
-    const feedback = feedbackList.find(f => f.criterion_id === criterionId);
-    const editData = editingFeedback[criterionId];
-
-    if (!feedback || !editData) return;
-
-    try {
-      const isComplete = editData.score !== null && editData.explanation && editData.guidance;
-
-      await rubricService.updateCriterionFeedback(feedback.id, {
-        score: editData.score,
-        score_explanation: editData.explanation,
-        improvement_guidance: editData.guidance,
-        reference_section: editData.reference,
-        status: isComplete ? 'completed' : 'in_progress'
-      });
-
-      await loadReview();
-    } catch (error) {
-      console.error('Error saving criterion feedback:', error);
-    }
-  };
-
-  const saveOverallFeedback = async () => {
-    if (!currentReview) return;
-
-    try {
-      const allComplete = feedbackList.every(f => {
-        const editData = editingFeedback[f.criterion_id];
-        return editData && editData.score !== null && editData.explanation && editData.guidance;
-      });
-
-      await rubricService.updateReview(currentReview.id, {
-        overall_assessment: overallAssessment,
-        revision_priorities: revisionPriorities.filter(p => p.trim()),
-        status: allComplete && overallAssessment ? 'completed' : 'in_progress'
-      });
-
-      await loadReview();
-    } catch (error) {
-      console.error('Error saving overall feedback:', error);
-    }
-  };
-
-  const completeReview = async () => {
-    if (!currentReview) return;
-
-    const allComplete = feedbackList.every(f => {
-      const editData = editingFeedback[f.criterion_id];
-      return editData && editData.score !== null && editData.explanation && editData.guidance;
-    });
-
-    if (!allComplete) {
-      alert('Please complete all criterion feedback before finishing the review.');
-      return;
-    }
-
-    if (!overallAssessment.trim()) {
-      alert('Please provide an overall assessment before finishing the review.');
-      return;
-    }
-
-    try {
-      await rubricService.updateReview(currentReview.id, {
-        status: 'completed'
-      });
-
-      await loadReview();
-      alert('Review completed successfully!');
-    } catch (error) {
-      console.error('Error completing review:', error);
-    }
-  };
-
-  const renderEssayContent = () => {
-    if (!selectedEssay) return null;
-
-    const content = selectedEssay.essay_content;
-    const paragraphs = content.split(/<\/p>|<br\s*\/?>/i).filter(p => p.trim());
-
-    return (
-      <div
-        className="prose max-w-none"
-        style={{
-          fontFamily: selectedEssay.font_family,
-          fontSize: `${selectedEssay.font_size}px`
-        }}
-      >
-        {paragraphs.map((paragraph, index) => {
-          const cleanParagraph = paragraph.replace(/<[^>]*>/g, '').trim();
-          if (!cleanParagraph) return null;
-
-          return (
-            <div key={index} className="mb-4 relative group">
-              <span className="absolute -left-8 top-0 text-xs text-slate-400 opacity-0 group-hover:opacity-100">
-                {index + 1}
-              </span>
-              <p>{cleanParagraph}</p>
-            </div>
-          );
-        })}
-      </div>
-    );
   };
 
   const filteredEssays = essays.filter(essay => {
@@ -298,15 +353,6 @@ const EssayReview: React.FC = () => {
     if (filter === 'reviewed') return essay.status === 'reviewed';
     return true;
   });
-
-  if (showRubricManagement) {
-    return (
-      <RubricManagement
-        onClose={() => setShowRubricManagement(false)}
-        onSelectRubric={handleSelectRubricForReview}
-      />
-    );
-  }
 
   if (loading) {
     return (
@@ -321,7 +367,7 @@ const EssayReview: React.FC = () => {
       <div className="p-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900">Essay Review</h1>
-          <p className="text-slate-600 mt-2">Review submitted essays using structured rubrics</p>
+          <p className="text-slate-600 mt-2">Review and provide feedback on student essays</p>
         </div>
 
         <div className="flex space-x-4 mb-6">
@@ -376,6 +422,14 @@ const EssayReview: React.FC = () => {
                 <p className="text-sm text-slate-500 mb-2">{essay.university_name}</p>
               )}
               <p className="text-xs text-slate-400">Submitted: {essay.submission_date}</p>
+              {essay.status === 'reviewed' && essay.score && essay.total_points && (
+                <div className="mt-3 flex items-center">
+                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 mr-1" />
+                  <span className="text-sm font-semibold text-slate-900">
+                    {essay.score}/{essay.total_points}
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -410,214 +464,180 @@ const EssayReview: React.FC = () => {
                   <p className="text-slate-500 text-sm mt-1">{selectedEssay.university_name}</p>
                 )}
               </div>
-              {!currentReview && (
-                <button
-                  onClick={() => setShowRubricManagement(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-                >
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Select Rubric
-                </button>
-              )}
+              <span
+                className={`px-4 py-2 rounded-full text-sm font-medium ${
+                  selectedEssay.status === 'reviewed'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-yellow-100 text-yellow-700'
+                }`}
+              >
+                {selectedEssay.status === 'reviewed' ? 'Reviewed' : 'Pending Review'}
+              </span>
             </div>
 
-            {renderEssayContent()}
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800">
+                Select text in the essay to add inline comments. Highlighted text will show your feedback.
+              </p>
+            </div>
+
+            <div
+              ref={essayContentRef}
+              onMouseUp={handleTextSelection}
+              className="prose max-w-none select-text"
+            >
+              {renderEssayWithHighlights()}
+            </div>
+
+            {selectedText && (
+              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-900 mb-1">Selected text:</p>
+                    <p className="text-sm text-slate-600 italic">"{selectedText.text}"</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedText(null);
+                      setCommentInput('');
+                      window.getSelection()?.removeAllRanges();
+                    }}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <textarea
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  placeholder="Add your comment about this selection..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-3"
+                  rows={3}
+                />
+                <button
+                  onClick={addInlineComment}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Add Comment
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {currentReview && selectedRubric && (
-        <div className="w-[500px] bg-white border-l border-slate-200 overflow-y-auto flex flex-col">
-          <div className="p-6 border-b border-slate-200">
-            <h3 className="text-lg font-bold text-slate-900">{selectedRubric.name}</h3>
-            {selectedRubric.description && (
-              <p className="text-sm text-slate-600 mt-1">{selectedRubric.description}</p>
-            )}
-            <div className="mt-3 text-xs text-slate-500">
-              Status: {currentReview.status === 'completed' ? 'Completed' : 'In Progress'}
+      <div className="w-96 bg-white border-l border-slate-200 overflow-y-auto flex flex-col">
+        <div className="p-6 border-b border-slate-200">
+          <h3 className="text-lg font-bold text-slate-900">Review Panel</h3>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div>
+            <h4 className="font-semibold text-slate-900 mb-3 flex items-center">
+              <MessageSquare className="w-5 h-5 mr-2" />
+              Inline Comments ({inlineComments.length})
+            </h4>
+            <div className="space-y-3">
+              {inlineComments.map(comment => (
+                <div key={comment.id} className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="text-xs font-medium text-slate-600">{comment.counselor_name}</p>
+                    <button
+                      onClick={() => deleteInlineComment(comment.id)}
+                      className="text-slate-400 hover:text-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500 italic mb-2">"{comment.highlighted_text}"</p>
+                  <p className="text-sm text-slate-900">{comment.comment_text}</p>
+                </div>
+              ))}
+              {inlineComments.length === 0 && (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  No inline comments yet. Select text to add one.
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-6 space-y-4">
-              {criteria.map(criterion => {
-                const feedback = feedbackList.find(f => f.criterion_id === criterion.id);
-                const editData = editingFeedback[criterion.id] || {
-                  score: null,
-                  explanation: '',
-                  guidance: '',
-                  reference: 'entire_essay'
-                };
-                const isExpanded = expandedCriteria.has(criterion.id);
-                const isComplete = editData.score !== null && editData.explanation && editData.guidance;
+          <div className="pt-6 border-t border-slate-200">
+            <h4 className="font-semibold text-slate-900 mb-3">General Comments</h4>
+            <textarea
+              value={generalCommentInput}
+              onChange={(e) => setGeneralCommentInput(e.target.value)}
+              placeholder="Add a general comment about the essay..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-3"
+              rows={3}
+            />
+            <button
+              onClick={addGeneralComment}
+              className="w-full px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors flex items-center justify-center"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Add General Comment
+            </button>
 
-                return (
-                  <div key={criterion.id} className="border border-slate-200 rounded-lg">
+            <div className="mt-4 space-y-3">
+              {generalComments.map(comment => (
+                <div key={comment.id} className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="text-xs font-medium text-slate-600">{comment.counselor_name}</p>
+                      <p className="text-xs text-slate-400">
+                        {new Date(comment.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
                     <button
-                      onClick={() => toggleCriterion(criterion.id)}
-                      className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                      onClick={() => deleteGeneralComment(comment.id)}
+                      className="text-slate-400 hover:text-red-600 transition-colors"
                     >
-                      <div className="flex items-center space-x-3">
-                        {isComplete && <Check className="w-5 h-5 text-green-600" />}
-                        <div className="text-left">
-                          <div className="font-semibold text-slate-900">{criterion.name}</div>
-                          {editData.score !== null && (
-                            <div className="flex items-center mt-1">
-                              {[1, 2, 3, 4, 5].map(i => (
-                                <Star
-                                  key={i}
-                                  className={`w-4 h-4 ${
-                                    i <= editData.score! ? 'text-yellow-500 fill-yellow-500' : 'text-slate-300'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      <X className="w-4 h-4" />
                     </button>
-
-                    {isExpanded && (
-                      <div className="p-4 border-t border-slate-200 space-y-4">
-                        {criterion.description && (
-                          <p className="text-sm text-slate-600 italic">{criterion.description}</p>
-                        )}
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Score (1-5)
-                          </label>
-                          <div className="flex space-x-2">
-                            {[1, 2, 3, 4, 5].map(score => (
-                              <button
-                                key={score}
-                                onClick={() => updateFeedbackField(criterion.id, 'score', score)}
-                                className={`w-12 h-12 rounded-lg border-2 transition-all ${
-                                  editData.score === score
-                                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold'
-                                    : 'border-slate-300 hover:border-blue-300'
-                                }`}
-                              >
-                                {score}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Why this score? (Required)
-                          </label>
-                          <textarea
-                            value={editData.explanation}
-                            onChange={(e) => updateFeedbackField(criterion.id, 'explanation', e.target.value)}
-                            placeholder="Explain what the essay does well and what prevents a higher score..."
-                            rows={4}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            How to improve? (Required)
-                          </label>
-                          <textarea
-                            value={editData.guidance}
-                            onChange={(e) => updateFeedbackField(criterion.id, 'guidance', e.target.value)}
-                            placeholder="Provide actionable steps to reach a higher score..."
-                            rows={4}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Reference (Optional)
-                          </label>
-                          <select
-                            value={editData.reference}
-                            onChange={(e) => updateFeedbackField(criterion.id, 'reference', e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          >
-                            <option value="entire_essay">Entire Essay</option>
-                            <option value="introduction">Introduction</option>
-                            <option value="conclusion">Conclusion</option>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-                              <option key={i} value={`paragraph_${i}`}>Paragraph {i}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <button
-                          onClick={() => saveCriterionFeedback(criterion.id)}
-                          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-                        >
-                          <Save className="w-4 h-4 mr-2" />
-                          Save Feedback
-                        </button>
-                      </div>
-                    )}
                   </div>
-                );
-              })}
+                  <p className="text-sm text-slate-900">{comment.comment_text}</p>
+                </div>
+              ))}
             </div>
+          </div>
 
-            <div className="p-6 border-t border-slate-200 space-y-4">
-              <h4 className="font-semibold text-slate-900">Overall Assessment</h4>
-
+          <div className="pt-6 border-t border-slate-200">
+            <h4 className="font-semibold text-slate-900 mb-3">Grade Essay</h4>
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Overall Feedback
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Total Points
                 </label>
-                <textarea
-                  value={overallAssessment}
-                  onChange={(e) => setOverallAssessment(e.target.value)}
-                  placeholder="Provide overall thoughts on the essay..."
-                  rows={4}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                <input
+                  type="number"
+                  value={totalPoints}
+                  onChange={(e) => setTotalPoints(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Top Revision Priorities (2-3)
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Score
                 </label>
-                {[0, 1, 2].map(index => (
-                  <input
-                    key={index}
-                    type="text"
-                    value={revisionPriorities[index]}
-                    onChange={(e) => {
-                      const newPriorities = [...revisionPriorities];
-                      newPriorities[index] = e.target.value;
-                      setRevisionPriorities(newPriorities);
-                    }}
-                    placeholder={`Priority ${index + 1}`}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm mb-2"
-                  />
-                ))}
+                <input
+                  type="number"
+                  value={score}
+                  onChange={(e) => setScore(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
-
               <button
-                onClick={saveOverallFeedback}
-                className="w-full px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors flex items-center justify-center"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Overall Feedback
-              </button>
-
-              <button
-                onClick={completeReview}
+                onClick={submitReview}
                 className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
               >
                 <Check className="w-4 h-4 mr-2" />
-                Complete Review
+                Submit Review
               </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
