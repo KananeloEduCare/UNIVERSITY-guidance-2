@@ -915,45 +915,49 @@ const EssayReview: React.FC = () => {
               </div>
 
               {selectedEssay.status === 'reviewed' && showRubricFeedback && selectedEssay.reviewData?.rubricFeedback && (
-                <div className="overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-5 border border-emerald-200 shadow-sm">
-                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2 sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-2">
-                    <Star className="w-5 h-5 text-emerald-600" />
-                    Rubric Feedback
-                  </h3>
+                <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm flex flex-col h-[calc(100vh-300px)] max-h-[800px]">
+                  <div className="p-5 border-b border-emerald-200 bg-gradient-to-br from-emerald-50 to-blue-50 flex-shrink-0">
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <Star className="w-5 h-5 text-emerald-600" />
+                      Rubric Feedback
+                    </h3>
+                  </div>
 
-                  <div className="space-y-3">
-                    {selectedEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
-                      <div
-                        key={index}
-                        className="bg-white border border-emerald-200 rounded-lg p-4 shadow-sm"
-                      >
-                        <div className="flex items-start gap-2.5 mb-2.5">
-                          <span className="inline-flex items-center justify-center w-6 h-6 bg-[#04ADEE] text-white text-xs font-bold rounded-full flex-shrink-0">
-                            {index + 1}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-bold text-slate-900">{feedback.criterionName}</h4>
-                            <p className="text-xs text-slate-600 mt-0.5">{feedback.criterionDescription}</p>
+                  <div className="overflow-y-auto flex-1 p-5">
+                    <div className="space-y-3">
+                      {selectedEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
+                        <div
+                          key={index}
+                          className="bg-white border border-emerald-200 rounded-lg p-4 shadow-sm"
+                        >
+                          <div className="flex items-start gap-2.5 mb-2.5">
+                            <span className="inline-flex items-center justify-center w-6 h-6 bg-[#04ADEE] text-white text-xs font-bold rounded-full flex-shrink-0">
+                              {index + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-bold text-slate-900">{feedback.criterionName}</h4>
+                              <p className="text-xs text-slate-600 mt-0.5">{feedback.criterionDescription}</p>
+                            </div>
+                            <div className="flex items-center gap-1 bg-emerald-100 px-1.5 py-0.5 rounded flex-shrink-0">
+                              <Star className="w-3.5 h-3.5 text-emerald-700 fill-emerald-700" />
+                              <span className="text-xs font-bold text-emerald-700">{feedback.rating}/5</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1 bg-emerald-100 px-1.5 py-0.5 rounded flex-shrink-0">
-                            <Star className="w-3.5 h-3.5 text-emerald-700 fill-emerald-700" />
-                            <span className="text-xs font-bold text-emerald-700">{feedback.rating}/5</span>
+
+                          <div className="space-y-2">
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
+                              <p className="text-xs font-semibold text-red-800 mb-0.5">What's Missing:</p>
+                              <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                              <p className="text-xs font-semibold text-blue-800 mb-0.5">How to Improve:</p>
+                              <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
+                            </div>
                           </div>
                         </div>
-
-                        <div className="space-y-2">
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
-                            <p className="text-xs font-semibold text-red-800 mb-0.5">What's Missing:</p>
-                            <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
-                          </div>
-
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
-                            <p className="text-xs font-semibold text-blue-800 mb-0.5">How to Improve:</p>
-                            <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
