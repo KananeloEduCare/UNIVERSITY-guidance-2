@@ -435,10 +435,15 @@ const EssayEditor: React.FC = () => {
   }, [selectedEssay?.id, studentName]);
 
   useEffect(() => {
-    if (selectedEssay && selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments && reviewedEssayRef.current) {
-      setTimeout(() => {
-        applyHighlightsToReviewedEssay(selectedEssay.reviewData!.inlineComments);
-      }, 50);
+    if (selectedEssay && selectedEssay.status === 'reviewed' && reviewedEssayRef.current) {
+      const cleanedHtml = cleanHtmlContent(selectedEssay.content);
+      reviewedEssayRef.current.innerHTML = cleanedHtml;
+
+      if (selectedEssay.reviewData?.inlineComments && selectedEssay.reviewData.inlineComments.length > 0) {
+        setTimeout(() => {
+          applyHighlightsToReviewedEssay(selectedEssay.reviewData!.inlineComments);
+        }, 50);
+      }
     }
   }, [selectedEssay?.id]);
 
