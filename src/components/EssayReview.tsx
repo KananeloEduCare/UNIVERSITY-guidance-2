@@ -899,8 +899,8 @@ const EssayReview: React.FC = () => {
               </div>
             )}
 
-            <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-6 max-w-7xl mx-auto h-[calc(100vh-280px)]' : 'max-w-5xl mx-auto'}>
-              <div className="bg-white rounded-lg p-8 border border-slate-200 shadow-sm overflow-y-auto">
+            <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-6 max-w-7xl mx-auto' : 'max-w-5xl mx-auto'}>
+              <div className="bg-white rounded-lg p-8 border border-slate-200 shadow-sm">
                 <div
                   ref={essayContentRef}
                   contentEditable={false}
@@ -916,19 +916,10 @@ const EssayReview: React.FC = () => {
 
               {selectedEssay.status === 'reviewed' && showRubricFeedback && selectedEssay.reviewData?.rubricFeedback && (
                 <div className="overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-5 border border-emerald-200 shadow-sm">
-                  <div className="sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-3 mb-4 border-b border-emerald-200">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                        <Star className="w-5 h-5 text-emerald-600" />
-                        Rubric Feedback
-                      </h3>
-                      {selectedEssay.reviewData?.totalGrade && (
-                        <span className="bg-emerald-600 text-white px-4 py-1.5 rounded-full text-sm font-bold">
-                          {selectedEssay.reviewData.totalGrade}%
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2 sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-2">
+                    <Star className="w-5 h-5 text-emerald-600" />
+                    Rubric Feedback
+                  </h3>
 
                   <div className="space-y-3">
                     {selectedEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
@@ -950,19 +941,17 @@ const EssayReview: React.FC = () => {
                           </div>
                         </div>
 
-                        {feedback.rating < 5 && (
-                          <div className="space-y-2">
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
-                              <p className="text-xs font-semibold text-red-800 mb-0.5">What's Missing:</p>
-                              <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
-                            </div>
-
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
-                              <p className="text-xs font-semibold text-blue-800 mb-0.5">How to Improve:</p>
-                              <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
-                            </div>
+                        <div className="space-y-2">
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
+                            <p className="text-xs font-semibold text-red-800 mb-0.5">What's Missing:</p>
+                            <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
                           </div>
-                        )}
+
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                            <p className="text-xs font-semibold text-blue-800 mb-0.5">How to Improve:</p>
+                            <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1156,14 +1145,7 @@ const EssayReview: React.FC = () => {
                       {essay.university_name && ` • ${essay.university_name}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {essay.status === 'reviewed' && essay.reviewData?.totalGrade && (
-                      <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold">
-                        {essay.reviewData.totalGrade}%
-                      </span>
-                    )}
-                    {getStatusBadge(essay.status)}
-                  </div>
+                  {getStatusBadge(essay.status)}
                 </div>
                 <div className="flex items-center gap-4 text-xs text-slate-500">
                   {essay.status === 'reviewed' && essay.reviewed_at ? (
