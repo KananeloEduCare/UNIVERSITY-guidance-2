@@ -886,7 +886,7 @@ const EssayReview: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="px-8 pt-6 pb-0 flex flex-col h-[calc(100vh-180px)]">
+          <div className="px-8 py-6">
             {rubricCriteria.length > 0 && selectedEssay.status !== 'reviewed' && (
               <div className="mb-4 flex justify-center">
                 <button
@@ -899,8 +899,8 @@ const EssayReview: React.FC = () => {
               </div>
             )}
 
-            <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-6 max-w-7xl mx-auto flex-1 min-h-0' : 'max-w-5xl mx-auto'}>
-              <div className="bg-white rounded-lg p-8 border border-slate-200 shadow-sm overflow-y-auto h-full">
+            <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-6 max-w-7xl mx-auto h-[calc(100vh-280px)]' : 'max-w-5xl mx-auto'}>
+              <div className="bg-white rounded-lg p-8 border border-slate-200 shadow-sm overflow-y-auto">
                 <div
                   ref={essayContentRef}
                   contentEditable={false}
@@ -915,8 +915,8 @@ const EssayReview: React.FC = () => {
               </div>
 
               {selectedEssay.status === 'reviewed' && showRubricFeedback && selectedEssay.reviewData?.rubricFeedback && (
-                <div className="overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-5 border border-emerald-200 shadow-sm h-full">
-                  <div className="sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-3 mb-4 border-b border-emerald-200 z-10">
+                <div className="overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-5 border border-emerald-200 shadow-sm">
+                  <div className="sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-3 mb-4 border-b border-emerald-200">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                         <Star className="w-5 h-5 text-emerald-600" />
