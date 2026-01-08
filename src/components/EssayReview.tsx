@@ -915,7 +915,7 @@ const EssayReview: React.FC = () => {
               </div>
 
               {selectedEssay.status === 'reviewed' && showRubricFeedback && selectedEssay.reviewData?.rubricFeedback && (
-                <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm flex flex-col h-[calc(100vh-300px)] max-h-[800px]">
+                <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm flex flex-col h-[calc(100vh-220px)] sticky top-6">
                   <div className="p-5 border-b border-emerald-200 bg-gradient-to-br from-emerald-50 to-blue-50 flex-shrink-0">
                     <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                       <Star className="w-5 h-5 text-emerald-600" />
