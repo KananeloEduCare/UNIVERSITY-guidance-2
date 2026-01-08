@@ -775,361 +775,364 @@ const EssayEditor: React.FC = () => {
           )}
 
           {viewMode === 'editor' && selectedEssay ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
-                <h2 className="text-xl font-bold text-gray-900 mb-1">{selectedEssay.title}</h2>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2.5 py-1 rounded-full ${getTypeColor(selectedEssay.type)}`}>
+            selectedEssay.status === 'reviewed' ? (
+              <div className="-mx-4">
+                <div className="bg-gradient-to-r from-[#04ADEE]/10 via-emerald-50 to-[#04ADEE]/10 border-b border-[#04ADEE]/20 px-8 py-4">
+                  <h2 className="text-xl font-bold text-slate-900 mb-1">{selectedEssay.title}</h2>
+                  <p className="text-sm text-slate-600">
                     {getTypeLabel(selectedEssay.type)}
-                  </span>
-                  {selectedEssay.universityName && (
-                    <span className="text-sm text-gray-600 italic">
-                      for {selectedEssay.universityName}
-                    </span>
-                  )}
+                    {selectedEssay.universityName && ` • ${selectedEssay.universityName}`}
+                    {' • '}{selectedEssay.wordCount} words
+                  </p>
+                </div>
+
+                <div className="px-8 py-6">
+                  <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-6 max-w-7xl mx-auto items-start' : 'max-w-5xl mx-auto'}>
+                    <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col max-h-[calc(100vh-12rem)] sticky top-6">
+                      <div className="overflow-y-auto flex-1 p-8">
+                        <div
+                          ref={reviewedEssayRef}
+                          contentEditable={false}
+                          className="prose prose-lg max-w-none text-slate-700"
+                          style={{
+                            fontFamily: selectedEssay.fontFamily,
+                            fontSize: `${selectedEssay.fontSize}pt`,
+                            lineHeight: '1.6'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {showRubricFeedback && selectedEssay.reviewData?.rubricFeedback && (
+                      <div className="sticky top-6 bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm flex flex-col max-h-[calc(100vh-12rem)] self-start">
+                        <div className="p-5 border-b border-emerald-200 bg-gradient-to-br from-emerald-50 to-blue-50 flex-shrink-0">
+                          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <Star className="w-5 h-5 text-emerald-600" />
+                            Rubric Feedback
+                          </h3>
+                        </div>
+
+                        <div className="overflow-y-auto flex-1 p-5 min-h-0">
+                          <div className="space-y-3">
+                            {selectedEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
+                              <div
+                                key={index}
+                                className="bg-white border border-emerald-200 rounded-lg p-4 shadow-sm"
+                              >
+                                <div className="flex items-start gap-2.5 mb-2.5">
+                                  <span className="inline-flex items-center justify-center w-6 h-6 bg-[#04ADEE] text-white text-xs font-bold rounded-full flex-shrink-0">
+                                    {index + 1}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-bold text-slate-900">{feedback.criterionName}</h4>
+                                    <p className="text-xs text-slate-600 mt-0.5">{feedback.criterionDescription}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1 bg-emerald-100 px-1.5 py-0.5 rounded flex-shrink-0">
+                                    <Star className="w-3.5 h-3.5 text-emerald-700 fill-emerald-700" />
+                                    <span className="text-xs font-bold text-emerald-700">{feedback.rating}/5</span>
+                                  </div>
+                                </div>
+
+                                {feedback.rating === 5 ? (
+                                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+                                    <p className="text-xs font-semibold text-emerald-800">Perfect Score!</p>
+                                    <p className="text-xs text-emerald-700 leading-relaxed">This criterion has been excellently fulfilled.</p>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
+                                      <p className="text-xs font-semibold text-red-800 mb-0.5">What's Missing:</p>
+                                      <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
+                                    </div>
+
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                                      <p className="text-xs font-semibold text-blue-800 mb-0.5">How to Improve:</p>
+                                      <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="max-w-7xl mx-auto mt-6">
+                    <div className="flex justify-center gap-3 mb-6">
+                      {selectedEssay.reviewData?.rubricFeedback && (
+                        <button
+                          onClick={() => setShowRubricFeedback(!showRubricFeedback)}
+                          className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm shadow-md"
+                        >
+                          <Star className="w-4 h-4" />
+                          {showRubricFeedback ? 'Hide' : 'View'} Feedback
+                        </button>
+                      )}
+                    </div>
+
+                    {!showRubricFeedback && selectedEssay.reviewData?.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
+                      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 max-w-5xl mx-auto">
+                        <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-blue-600" />
+                          General Feedback
+                        </h3>
+
+                        <div className="space-y-3">
+                          {selectedEssay.reviewData.generalComments.map((comment) => (
+                            <div
+                              key={comment.id}
+                              className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm"
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <p className="text-xs font-semibold text-gray-700">
+                                  {comment.counselor_name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(comment.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                {comment.comment_text}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="border-b border-gray-200 p-3">
-                <div className="flex items-center justify-between">
-                  {selectedEssay.type !== 'activity_list' ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleFormat('bold')}
-                          disabled={selectedEssay.status === 'submitted'}
-                          className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Bold"
-                        >
-                          <Bold className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleFormat('italic')}
-                          disabled={selectedEssay.status === 'submitted'}
-                          className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Italic"
-                        >
-                          <Italic className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleFormat('underline')}
-                          disabled={selectedEssay.status === 'submitted'}
-                          className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Underline"
-                        >
-                          <Underline className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <div className="border-l border-gray-300 h-5"></div>
-                      <select
-                        value={selectedEssay.fontFamily}
-                        onChange={(e) => handleFontFamilyChange(e.target.value)}
-                        disabled={selectedEssay.status === 'submitted'}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        style={{ fontFamily: selectedEssay.fontFamily }}
-                      >
-                        {fontFamilies.map(font => (
-                          <option key={font} value={font} style={{ fontFamily: font }}>
-                            {font}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={selectedEssay.fontSize}
-                        onChange={(e) => handleFontSizeChange(Number(e.target.value))}
-                        disabled={selectedEssay.status === 'submitted'}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        {fontSizes.map(size => (
-                          <option key={size} value={size}>
-                            {size}pt
-                          </option>
-                        ))}
-                      </select>
-                      <div className="border-l border-gray-300 h-5"></div>
-                      <span className="text-xs font-medium text-gray-600">
-                        {selectedEssay.wordCount} words
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">{selectedEssay.title}</h2>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2.5 py-1 rounded-full ${getTypeColor(selectedEssay.type)}`}>
+                      {getTypeLabel(selectedEssay.type)}
+                    </span>
+                    {selectedEssay.universityName && (
+                      <span className="text-sm text-gray-600 italic">
+                        for {selectedEssay.universityName}
                       </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <List className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm font-medium text-gray-700">Activity List</span>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.rubricFeedback && (
-                      <button
-                        onClick={() => setShowRubricFeedback(!showRubricFeedback)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
-                      >
-                        <Star className="w-3.5 h-3.5" />
-                        {showRubricFeedback ? 'Hide' : 'View'} Feedback
-                      </button>
                     )}
-                    {selectedEssay.status !== 'reviewed' && (
-                      <>
-                        <button
-                          onClick={handleSave}
+                  </div>
+                </div>
+                <div className="border-b border-gray-200 p-3">
+                  <div className="flex items-center justify-between">
+                    {selectedEssay.type !== 'activity_list' ? (
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleFormat('bold')}
+                            disabled={selectedEssay.status === 'submitted'}
+                            className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Bold"
+                          >
+                            <Bold className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleFormat('italic')}
+                            disabled={selectedEssay.status === 'submitted'}
+                            className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Italic"
+                          >
+                            <Italic className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleFormat('underline')}
+                            disabled={selectedEssay.status === 'submitted'}
+                            className="p-1.5 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Underline"
+                          >
+                            <Underline className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="border-l border-gray-300 h-5"></div>
+                        <select
+                          value={selectedEssay.fontFamily}
+                          onChange={(e) => handleFontFamilyChange(e.target.value)}
                           disabled={selectedEssay.status === 'submitted'}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          style={{ fontFamily: selectedEssay.fontFamily }}
                         >
-                          <Save className="w-3.5 h-3.5" />
-                          Save Draft
-                        </button>
-                        <button
-                          onClick={handleSubmit}
-                          disabled={selectedEssay.status === 'submitted' || selectedEssay.wordCount === 0}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          {fontFamilies.map(font => (
+                            <option key={font} value={font} style={{ fontFamily: font }}>
+                              {font}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={selectedEssay.fontSize}
+                          onChange={(e) => handleFontSizeChange(Number(e.target.value))}
+                          disabled={selectedEssay.status === 'submitted'}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          {fontSizes.map(size => (
+                            <option key={size} value={size}>
+                              {size}pt
+                            </option>
+                          ))}
+                        </select>
+                        <div className="border-l border-gray-300 h-5"></div>
+                        <span className="text-xs font-medium text-gray-600">
+                          {selectedEssay.wordCount} words
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <List className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-700">Activity List</span>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSave}
+                        disabled={selectedEssay.status === 'submitted'}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        Save Draft
+                      </button>
+                      <button
+                        onClick={handleSubmit}
+                        disabled={selectedEssay.status === 'submitted' || selectedEssay.wordCount === 0}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send className="w-3.5 h-3.5" />
                         Submit for Review
                       </button>
-                      </>
-                    )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-4' : ''}>
-                <div className={showRubricFeedback ? 'border-r border-gray-200 pr-4' : ''}>
+                <div>
                   {selectedEssay.type === 'activity_list' ? (
-                <div className="essay-container p-6 min-h-[500px]">
-                  <div className="space-y-4">
-                    {selectedEssay.activities && selectedEssay.activities.length > 0 ? (
-                      selectedEssay.activities.map((activity, index) => (
-                        <div key={activity.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-semibold text-gray-700">Activity {index + 1}</h4>
-                            {selectedEssay.status !== 'submitted' && selectedEssay.status !== 'reviewed' && (
-                              <button
-                                onClick={() => {
-                                  const updated = {
-                                    ...selectedEssay,
-                                    activities: selectedEssay.activities?.filter(a => a.id !== activity.id)
-                                  };
-                                  setSelectedEssay(updated);
-                                  saveEssayToFirebase(updated);
-                                }}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                          <div className="space-y-3">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Activity Name</label>
-                              <input
-                                type="text"
-                                value={activity.name}
-                                onChange={(e) => {
-                                  const updated = {
-                                    ...selectedEssay,
-                                    activities: selectedEssay.activities?.map(a =>
-                                      a.id === activity.id ? { ...a, name: e.target.value } : a
-                                    )
-                                  };
-                                  setSelectedEssay(updated);
-                                }}
-                                onBlur={() => saveEssayToFirebase(selectedEssay)}
-                                disabled={selectedEssay.status === 'submitted' || selectedEssay.status === 'reviewed'}
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                placeholder="e.g., Varsity Basketball Team"
-                              />
+                    <div className="essay-container p-6 min-h-[500px]">
+                      <div className="space-y-4">
+                        {selectedEssay.activities && selectedEssay.activities.length > 0 ? (
+                          selectedEssay.activities.map((activity, index) => (
+                            <div key={activity.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-semibold text-gray-700">Activity {index + 1}</h4>
+                                {selectedEssay.status !== 'submitted' && (
+                                  <button
+                                    onClick={() => {
+                                      const updated = {
+                                        ...selectedEssay,
+                                        activities: selectedEssay.activities?.filter(a => a.id !== activity.id)
+                                      };
+                                      setSelectedEssay(updated);
+                                      saveEssayToFirebase(updated);
+                                    }}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Activity Name</label>
+                                  <input
+                                    type="text"
+                                    value={activity.name}
+                                    onChange={(e) => {
+                                      const updated = {
+                                        ...selectedEssay,
+                                        activities: selectedEssay.activities?.map(a =>
+                                          a.id === activity.id ? { ...a, name: e.target.value } : a
+                                        )
+                                      };
+                                      setSelectedEssay(updated);
+                                    }}
+                                    onBlur={() => saveEssayToFirebase(selectedEssay)}
+                                    disabled={selectedEssay.status === 'submitted'}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    placeholder="e.g., Varsity Basketball Team"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                                  <textarea
+                                    value={activity.description}
+                                    onChange={(e) => {
+                                      const updated = {
+                                        ...selectedEssay,
+                                        activities: selectedEssay.activities?.map(a =>
+                                          a.id === activity.id ? { ...a, description: e.target.value } : a
+                                        )
+                                      };
+                                      setSelectedEssay(updated);
+                                    }}
+                                    onBlur={() => saveEssayToFirebase(selectedEssay)}
+                                    disabled={selectedEssay.status === 'submitted'}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    placeholder="Describe your role, achievements, and what you learned..."
+                                    rows={4}
+                                  />
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
-                              <textarea
-                                value={activity.description}
-                                onChange={(e) => {
-                                  const updated = {
-                                    ...selectedEssay,
-                                    activities: selectedEssay.activities?.map(a =>
-                                      a.id === activity.id ? { ...a, description: e.target.value } : a
-                                    )
-                                  };
-                                  setSelectedEssay(updated);
-                                }}
-                                onBlur={() => saveEssayToFirebase(selectedEssay)}
-                                disabled={selectedEssay.status === 'submitted' || selectedEssay.status === 'reviewed'}
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                placeholder="Describe your role, achievements, and what you learned..."
-                                rows={4}
-                              />
-                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            <List className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                            <p className="text-sm">No activities added yet. Click "Add Activity" to get started.</p>
                           </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <List className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p className="text-sm">No activities added yet. Click "Add Activity" to get started.</p>
+                        )}
+                        {selectedEssay.status !== 'submitted' && (
+                          <button
+                            onClick={() => {
+                              const newActivity: ActivityItem = {
+                                id: Date.now().toString(),
+                                name: '',
+                                description: ''
+                              };
+                              const updated = {
+                                ...selectedEssay,
+                                activities: [...(selectedEssay.activities || []), newActivity]
+                              };
+                              setSelectedEssay(updated);
+                              saveEssayToFirebase(updated);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-gray-600 hover:text-blue-600"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Activity
+                          </button>
+                        )}
                       </div>
-                    )}
-                    {selectedEssay.status !== 'submitted' && selectedEssay.status !== 'reviewed' && (
-                      <button
-                        onClick={() => {
-                          const newActivity: ActivityItem = {
-                            id: Date.now().toString(),
-                            name: '',
-                            description: ''
-                          };
-                          const updated = {
-                            ...selectedEssay,
-                            activities: [...(selectedEssay.activities || []), newActivity]
-                          };
-                          setSelectedEssay(updated);
-                          saveEssayToFirebase(updated);
-                        }}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-gray-600 hover:text-blue-600"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Activity
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments ? (
-                <div
-                  ref={reviewedEssayRef}
-                  contentEditable={false}
-                  className="essay-container p-6 min-h-[500px] relative select-text cursor-text"
-                  style={{
-                    fontSize: `${selectedEssay.fontSize}pt`,
-                    lineHeight: '1.6',
-                    fontFamily: selectedEssay.fontFamily
-                  }}
-                />
-              ) : (
-                <div
-                  ref={editorRef}
-                  contentEditable={selectedEssay.status !== 'submitted' && selectedEssay.status !== 'reviewed'}
-                  onInput={updateWordCount}
-                  className={`essay-container p-6 min-h-[500px] focus:outline-none ${
-                    selectedEssay.status === 'submitted' || selectedEssay.status === 'reviewed' ? 'bg-gray-50 cursor-not-allowed' : ''
-                  }`}
-                  style={{
-                    fontSize: `${selectedEssay.fontSize}pt`,
-                    lineHeight: '1.6',
-                    fontFamily: selectedEssay.fontFamily
-                  }}
-                />
-              )}
-
-              {selectedEssay.status === 'submitted' && (
-                <div className="border-t border-gray-200 p-3 bg-green-50">
-                  <p className="text-xs text-green-700 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                    This essay has been submitted for review and cannot be edited.
-                  </p>
-                </div>
-              )}
-
-              {selectedEssay.status === 'reviewed' && selectedEssay.reviewData && (
-                <div className="border-t border-gray-200 p-3 bg-blue-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-blue-600" />
-                        <p className="text-xs font-semibold text-blue-900">
-                          Essay Reviewed by {selectedEssay.reviewData.reviewedBy}
-                        </p>
-                      </div>
-                      {selectedEssay.reviewData.reviewedAt && (
-                        <p className="text-xs text-blue-700 ml-6">
-                          Reviewed {formatReviewDate(selectedEssay.reviewData.reviewedAt)}
-                        </p>
-                      )}
                     </div>
-                    {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
-                      <div className="flex items-center gap-1.5 bg-yellow-100 px-2 py-1 rounded border border-yellow-300">
-                        <MessageSquare className="w-3 h-3 text-yellow-700" />
-                        <p className="text-xs text-yellow-700 font-medium">
-                          {selectedEssay.reviewData.inlineComments.length} inline comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''} - click highlights
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+                  ) : (
+                    <div
+                      ref={editorRef}
+                      contentEditable={selectedEssay.status !== 'submitted'}
+                      onInput={updateWordCount}
+                      className={`essay-container p-6 min-h-[500px] focus:outline-none ${
+                        selectedEssay.status === 'submitted' ? 'bg-gray-50 cursor-not-allowed' : ''
+                      }`}
+                      style={{
+                        fontSize: `${selectedEssay.fontSize}pt`,
+                        lineHeight: '1.6',
+                        fontFamily: selectedEssay.fontFamily
+                      }}
+                    />
+                  )}
 
-              {!showRubricFeedback && selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
-                <div className="border-t border-gray-200 p-4 bg-gray-50">
-                  <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-blue-600" />
-                    General Feedback
-                  </h3>
-
-                  <div className="space-y-3">
-                    {selectedEssay.reviewData.generalComments.map((comment) => (
-                      <div
-                        key={comment.id}
-                        className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <p className="text-xs font-semibold text-gray-700">
-                            {comment.counselor_name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(comment.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {comment.comment_text}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-                </div>
-
-                {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.rubricFeedback && showRubricFeedback && (
-                  <div className="pl-4 overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-4">
-                    <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2 sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-2">
-                      <Star className="w-4 h-4 text-emerald-600" />
-                      Rubric Feedback
-                    </h3>
-
-                    <div className="space-y-3">
-                      {selectedEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
-                        <div
-                          key={index}
-                          className="bg-white border border-emerald-200 rounded-lg p-3.5 shadow-sm"
-                        >
-                          <div className="flex items-start gap-2.5 mb-2.5">
-                            <span className="inline-flex items-center justify-center w-6 h-6 bg-[#04ADEE] text-white text-xs font-bold rounded-full flex-shrink-0">
-                              {index + 1}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-gray-900">{feedback.criterionName}</h4>
-                              <p className="text-xs text-gray-600 mt-0.5">{feedback.criterionDescription}</p>
-                            </div>
-                            <div className="flex items-center gap-1 bg-emerald-100 px-1.5 py-0.5 rounded flex-shrink-0">
-                              <Star className="w-3 h-3 text-emerald-700 fill-emerald-700" />
-                              <span className="text-xs font-bold text-emerald-700">{feedback.rating}/5</span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-2">
-                              <p className="text-xs font-semibold text-red-800 mb-0.5">What's Missing:</p>
-                              <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
-                            </div>
-
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                              <p className="text-xs font-semibold text-blue-800 mb-0.5">How to Improve:</p>
-                              <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                  {selectedEssay.status === 'submitted' && (
+                    <div className="border-t border-gray-200 p-3 bg-green-50">
+                      <p className="text-xs text-green-700 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                        This essay has been submitted for review and cannot be edited.
+                      </p>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
             </div>
+            )
           ) : null}
         </div>
       </div>
