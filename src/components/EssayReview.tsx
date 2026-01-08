@@ -562,8 +562,8 @@ const EssayReview: React.FC = () => {
       criterionName: criterion.name,
       criterionDescription: criterion.description,
       rating: criterionGrades[criterion.id].rating,
-      whatsMissing: criterionGrades[criterion.id].whatsMissing,
-      howToImprove: criterionGrades[criterion.id].howToImprove
+      whatsMissing: criterionGrades[criterion.id].rating === 5 ? '' : criterionGrades[criterion.id].whatsMissing,
+      howToImprove: criterionGrades[criterion.id].rating === 5 ? '' : criterionGrades[criterion.id].howToImprove
     }));
 
     const [studentName, essayTitle] = selectedEssay.id.split('___');
@@ -819,31 +819,40 @@ const EssayReview: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="mb-4">
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        What's missing? (Why didn't they get a 5?)
-                      </label>
-                      <textarea
-                        value={criterionGrades[criterion.id]?.whatsMissing || ''}
-                        onChange={(e) => updateCriterionGrade(criterion.id, 'whatsMissing', e.target.value)}
-                        placeholder="Explain what elements are missing or could be improved..."
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm resize-none"
-                        rows={3}
-                      />
-                    </div>
+                    {criterionGrades[criterion.id]?.rating === 5 ? (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <p className="text-sm font-semibold text-emerald-800">Perfect Score!</p>
+                        <p className="text-sm text-emerald-700 leading-relaxed">This criterion has been excellently fulfilled.</p>
+                      </div>
+                    ) : criterionGrades[criterion.id]?.rating > 0 ? (
+                      <>
+                        <div className="mb-4">
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                            What's missing? (Why didn't they get a 5?)
+                          </label>
+                          <textarea
+                            value={criterionGrades[criterion.id]?.whatsMissing || ''}
+                            onChange={(e) => updateCriterionGrade(criterion.id, 'whatsMissing', e.target.value)}
+                            placeholder="Explain what elements are missing or could be improved..."
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm resize-none"
+                            rows={3}
+                          />
+                        </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        How to improve to a 5?
-                      </label>
-                      <textarea
-                        value={criterionGrades[criterion.id]?.howToImprove || ''}
-                        onChange={(e) => updateCriterionGrade(criterion.id, 'howToImprove', e.target.value)}
-                        placeholder="Provide specific suggestions on how to reach a perfect score..."
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm resize-none"
-                        rows={3}
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                            How to improve to a 5?
+                          </label>
+                          <textarea
+                            value={criterionGrades[criterion.id]?.howToImprove || ''}
+                            onChange={(e) => updateCriterionGrade(criterion.id, 'howToImprove', e.target.value)}
+                            placeholder="Provide specific suggestions on how to reach a perfect score..."
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm resize-none"
+                            rows={3}
+                          />
+                        </div>
+                      </>
+                    ) : null}
                   </div>
                 ))}
 
@@ -862,16 +871,18 @@ const EssayReview: React.FC = () => {
                       onClick={handleSubmitGrade}
                       disabled={
                         !Object.values(criterionGrades).every(grade =>
-                          grade.rating > 0 &&
-                          grade.whatsMissing.trim() &&
-                          grade.howToImprove.trim()
+                          grade.rating > 0 && (
+                            grade.rating === 5 ||
+                            (grade.whatsMissing.trim() && grade.howToImprove.trim())
+                          )
                         )
                       }
                       className={`flex-1 px-4 py-3 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2 ${
                         Object.values(criterionGrades).every(grade =>
-                          grade.rating > 0 &&
-                          grade.whatsMissing.trim() &&
-                          grade.howToImprove.trim()
+                          grade.rating > 0 && (
+                            grade.rating === 5 ||
+                            (grade.whatsMissing.trim() && grade.howToImprove.trim())
+                          )
                         )
                           ? 'bg-emerald-500 text-white hover:bg-emerald-600'
                           : 'bg-slate-300 text-slate-500 cursor-not-allowed'
@@ -915,15 +926,15 @@ const EssayReview: React.FC = () => {
               </div>
 
               {selectedEssay.status === 'reviewed' && showRubricFeedback && selectedEssay.reviewData?.rubricFeedback && (
-                <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm flex flex-col h-[calc(100vh-220px)] sticky top-6">
-                  <div className="p-5 border-b border-emerald-200 bg-gradient-to-br from-emerald-50 to-blue-50 flex-shrink-0">
+                <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm">
+                  <div className="p-5 border-b border-emerald-200 bg-gradient-to-br from-emerald-50 to-blue-50">
                     <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                       <Star className="w-5 h-5 text-emerald-600" />
                       Rubric Feedback
                     </h3>
                   </div>
 
-                  <div className="overflow-y-auto flex-1 p-5">
+                  <div className="p-5">
                     <div className="space-y-3">
                       {selectedEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
                         <div
@@ -944,17 +955,24 @@ const EssayReview: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="space-y-2">
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
-                              <p className="text-xs font-semibold text-red-800 mb-0.5">What's Missing:</p>
-                              <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
+                          {feedback.rating === 5 ? (
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+                              <p className="text-xs font-semibold text-emerald-800">Perfect Score!</p>
+                              <p className="text-xs text-emerald-700 leading-relaxed">This criterion has been excellently fulfilled.</p>
                             </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
+                                <p className="text-xs font-semibold text-red-800 mb-0.5">What's Missing:</p>
+                                <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
+                              </div>
 
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
-                              <p className="text-xs font-semibold text-blue-800 mb-0.5">How to Improve:</p>
-                              <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                                <p className="text-xs font-semibold text-blue-800 mb-0.5">How to Improve:</p>
+                                <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       ))}
                     </div>
