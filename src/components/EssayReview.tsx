@@ -300,14 +300,20 @@ const EssayReview: React.FC = () => {
   const handleEssayClick = async (essayId: string) => {
     const essay = essays.find(e => e.id === essayId);
     if (essay) {
-      setSelectedEssay(essay);
-
       const [studentName, essayTitle] = essayId.split('___');
       const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
 
       onValue(essayRef, (snapshot) => {
         if (snapshot.exists()) {
           const essayData = snapshot.val();
+
+          const updatedEssay = {
+            ...essay,
+            reviewData: essayData.reviewData || undefined
+          };
+
+          setSelectedEssay(updatedEssay);
+
           if (essayData.reviewData) {
             setInlineComments(essayData.reviewData.inlineComments || []);
             setGeneralComments(essayData.reviewData.generalComments || []);
@@ -909,7 +915,7 @@ const EssayReview: React.FC = () => {
               </div>
 
               {selectedEssay.status === 'reviewed' && showRubricFeedback && selectedEssay.reviewData?.rubricFeedback && (
-                <div className="h-[calc(100vh-250px)] overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-5 border border-emerald-200 shadow-sm">
+                <div className="overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-5 border border-emerald-200 shadow-sm">
                   <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2 sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-2">
                     <Star className="w-5 h-5 text-emerald-600" />
                     Rubric Feedback

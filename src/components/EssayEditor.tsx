@@ -1085,7 +1085,7 @@ const EssayEditor: React.FC = () => {
                 </div>
 
                 {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.rubricFeedback && showRubricFeedback && (
-                  <div className="pl-4 h-[calc(100vh-300px)] overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-4">
+                  <div className="pl-4 overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-4">
                     <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2 sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-2">
                       <Star className="w-4 h-4 text-emerald-600" />
                       Rubric Feedback
