@@ -910,7 +910,7 @@ const EssayReview: React.FC = () => {
               </div>
             )}
 
-            <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-6 max-w-7xl mx-auto' : 'max-w-5xl mx-auto'}>
+            <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-6 max-w-7xl mx-auto items-start' : 'max-w-5xl mx-auto'}>
               <div className="bg-white rounded-lg p-8 border border-slate-200 shadow-sm">
                 <div
                   ref={essayContentRef}
@@ -926,15 +926,15 @@ const EssayReview: React.FC = () => {
               </div>
 
               {selectedEssay.status === 'reviewed' && showRubricFeedback && selectedEssay.reviewData?.rubricFeedback && (
-                <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm">
-                  <div className="p-5 border-b border-emerald-200 bg-gradient-to-br from-emerald-50 to-blue-50">
+                <div className="sticky top-6 bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm flex flex-col max-h-[calc(100vh-3rem)] overflow-hidden">
+                  <div className="p-5 border-b border-emerald-200 bg-gradient-to-br from-emerald-50 to-blue-50 flex-shrink-0">
                     <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                       <Star className="w-5 h-5 text-emerald-600" />
                       Rubric Feedback
                     </h3>
                   </div>
 
-                  <div className="p-5">
+                  <div className="overflow-y-auto flex-1 p-5">
                     <div className="space-y-3">
                       {selectedEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
                         <div
