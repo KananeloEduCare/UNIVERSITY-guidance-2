@@ -775,7 +775,7 @@ const EssayEditor: React.FC = () => {
           )}
 
           {viewMode === 'editor' && selectedEssay ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-180px)]">
               <div className="border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
                 <h2 className="text-xl font-bold text-gray-900 mb-1">{selectedEssay.title}</h2>
                 <div className="flex items-center gap-2">
@@ -890,8 +890,8 @@ const EssayEditor: React.FC = () => {
                 </div>
               </div>
 
-              <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-4 h-[calc(100vh-320px)]' : ''}>
-                <div className={showRubricFeedback ? 'border-r border-gray-200 pr-4 overflow-y-auto' : ''}>
+              <div className={showRubricFeedback ? 'grid grid-cols-[60%_40%] gap-4 flex-1 min-h-0' : ''}>
+                <div className={showRubricFeedback ? 'border-r border-gray-200 pr-4 overflow-y-auto h-full' : ''}>
                   {selectedEssay.type === 'activity_list' ? (
                 <div className="essay-container p-6 min-h-[500px]">
                   <div className="space-y-4">
@@ -1085,8 +1085,8 @@ const EssayEditor: React.FC = () => {
                 </div>
 
                 {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.rubricFeedback && showRubricFeedback && (
-                  <div className="pl-4 overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-4">
-                    <div className="sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-2 mb-3 border-b border-emerald-200">
+                  <div className="pl-4 overflow-y-auto bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-4 h-full">
+                    <div className="sticky top-0 bg-gradient-to-br from-emerald-50 to-blue-50 pb-2 mb-3 border-b border-emerald-200 z-10">
                       <div className="flex items-center justify-between">
                         <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                           <Star className="w-4 h-4 text-emerald-600" />
