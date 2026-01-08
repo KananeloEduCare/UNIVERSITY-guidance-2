@@ -64,6 +64,7 @@ const EssayEditor: React.FC = () => {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [activeComment, setActiveComment] = useState<InlineComment | null>(null);
+  const [showRubricFeedback, setShowRubricFeedback] = useState(false);
   const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
   const [activeCategory, setActiveCategory] = useState<'draft' | 'submitted' | 'reviewed'>('draft');
   const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
@@ -1027,14 +1028,71 @@ const EssayEditor: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
-                      <div className="flex items-center gap-1.5 bg-yellow-100 px-2 py-1 rounded border border-yellow-300">
-                        <MessageSquare className="w-3 h-3 text-yellow-700" />
-                        <p className="text-xs text-yellow-700 font-medium">
-                          {selectedEssay.reviewData.inlineComments.length} inline comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''} - click highlights
-                        </p>
+                    <div className="flex items-center gap-2">
+                      {selectedEssay.reviewData.inlineComments && selectedEssay.reviewData.inlineComments.length > 0 && (
+                        <div className="flex items-center gap-1.5 bg-yellow-100 px-2 py-1 rounded border border-yellow-300">
+                          <MessageSquare className="w-3 h-3 text-yellow-700" />
+                          <p className="text-xs text-yellow-700 font-medium">
+                            {selectedEssay.reviewData.inlineComments.length} inline comment{selectedEssay.reviewData.inlineComments.length !== 1 ? 's' : ''} - click highlights
+                          </p>
+                        </div>
+                      )}
+                      {selectedEssay.reviewData.rubricFeedback && selectedEssay.reviewData.rubricFeedback.length > 0 && (
+                        <button
+                          onClick={() => setShowRubricFeedback(!showRubricFeedback)}
+                          className="flex items-center gap-1.5 bg-emerald-100 px-3 py-1.5 rounded border border-emerald-300 hover:bg-emerald-200 transition-colors"
+                        >
+                          <Star className="w-3 h-3 text-emerald-700" />
+                          <p className="text-xs text-emerald-700 font-medium">
+                            {showRubricFeedback ? 'Hide' : 'View'} Feedback
+                          </p>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.rubricFeedback && showRubricFeedback && (
+                <div className="border-t border-gray-200 p-4 bg-gradient-to-br from-emerald-50 to-blue-50">
+                  <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-emerald-600" />
+                    Rubric Feedback
+                  </h3>
+
+                  <div className="space-y-3">
+                    {selectedEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
+                      <div
+                        key={index}
+                        className="bg-white border border-emerald-200 rounded-lg p-4 shadow-sm"
+                      >
+                        <div className="flex items-start gap-3 mb-3">
+                          <span className="inline-flex items-center justify-center w-6 h-6 bg-[#04ADEE] text-white text-xs font-bold rounded-full flex-shrink-0">
+                            {index + 1}
+                          </span>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-bold text-gray-900">{feedback.criterionName}</h4>
+                            <p className="text-xs text-gray-600 mt-0.5">{feedback.criterionDescription}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-emerald-100 px-2 py-1 rounded">
+                            <Star className="w-3 h-3 text-emerald-700 fill-emerald-700" />
+                            <span className="text-xs font-bold text-emerald-700">{feedback.rating}/5</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
+                            <p className="text-xs font-semibold text-red-800 mb-1">What's Missing:</p>
+                            <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
+                          </div>
+
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                            <p className="text-xs font-semibold text-blue-800 mb-1">How to Improve:</p>
+                            <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
+                          </div>
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               )}

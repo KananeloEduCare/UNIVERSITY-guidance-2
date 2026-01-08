@@ -534,22 +534,17 @@ const EssayReview: React.FC = () => {
   const handleSubmitGrade = async () => {
     if (!selectedEssay) return;
 
-    const allGraded = Object.values(criterionGrades).every(grade => grade.rating > 0);
-    if (!allGraded) {
-      alert('Please rate all criteria before submitting.');
-      return;
-    }
-
-    const allFeedbackProvided = Object.values(criterionGrades).every(
-      grade => grade.whatsMissing.trim() && grade.howToImprove.trim()
-    );
-    if (!allFeedbackProvided) {
-      alert('Please provide feedback for all criteria.');
-      return;
-    }
-
     const totalPossibleScore = rubricCriteria.length * 5;
     const earnedScore = Object.values(criterionGrades).reduce((sum, grade) => sum + grade.rating, 0);
+    const percentageGrade = (earnedScore / totalPossibleScore) * 100;
+
+    const rubricFeedback = rubricCriteria.map(criterion => ({
+      criterionName: criterion.name,
+      criterionDescription: criterion.description,
+      rating: criterionGrades[criterion.id].rating,
+      whatsMissing: criterionGrades[criterion.id].whatsMissing,
+      howToImprove: criterionGrades[criterion.id].howToImprove
+    }));
 
     const [studentName, essayTitle] = selectedEssay.id.split('___');
     const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
@@ -566,9 +561,8 @@ const EssayReview: React.FC = () => {
         reviewData: {
           reviewedBy: counselorName,
           reviewedAt: new Date().toISOString(),
-          totalPoints: totalPossibleScore,
-          score: earnedScore,
-          rubricGrades: criterionGrades
+          percentageGrade: percentageGrade,
+          rubricFeedback: rubricFeedback
         }
       });
     }
@@ -837,7 +831,22 @@ const EssayReview: React.FC = () => {
                     </button>
                     <button
                       onClick={handleSubmitGrade}
-                      className="flex-1 px-4 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                      disabled={
+                        !Object.values(criterionGrades).every(grade =>
+                          grade.rating > 0 &&
+                          grade.whatsMissing.trim() &&
+                          grade.howToImprove.trim()
+                        )
+                      }
+                      className={`flex-1 px-4 py-3 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2 ${
+                        Object.values(criterionGrades).every(grade =>
+                          grade.rating > 0 &&
+                          grade.whatsMissing.trim() &&
+                          grade.howToImprove.trim()
+                        )
+                          ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                          : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      }`}
                     >
                       <Check className="w-4 h-4" />
                       Submit Grade
@@ -870,6 +879,7 @@ const EssayReview: React.FC = () => {
                   fontSize: `${selectedEssay.font_size}pt`,
                   lineHeight: '1.6'
                 }}
+                dangerouslySetInnerHTML={{ __html: selectedEssay.essay_content }}
               />
             </div>
           </div>
