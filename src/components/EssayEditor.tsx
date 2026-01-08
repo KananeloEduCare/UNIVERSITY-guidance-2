@@ -66,6 +66,7 @@ const EssayEditor: React.FC = () => {
   const [showRubricFeedback, setShowRubricFeedback] = useState(false);
   const [activeCategory, setActiveCategory] = useState<'draft' | 'submitted' | 'reviewed'>('draft');
   const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
+  const [wordCount, setWordCount] = useState(0);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const essayContentRef = useRef<HTMLDivElement>(null);
@@ -422,6 +423,18 @@ const EssayEditor: React.FC = () => {
   }, [selectedEssay?.id]);
 
   useEffect(() => {
+    if (selectedEssay && selectedEssay.status === 'reviewed') {
+      const essayRef = ref(database, `University Data/Essays/${studentName}/${selectedEssay.title}`);
+      onValue(essayRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const essayData = snapshot.val();
+          setWordCount(essayData.wordCount || 0);
+        }
+      }, { onlyOnce: true });
+    }
+  }, [selectedEssay?.id, studentName]);
+
+  useEffect(() => {
     if (selectedEssay && selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.inlineComments && reviewedEssayRef.current) {
       setTimeout(() => {
         applyHighlightsToReviewedEssay(selectedEssay.reviewData!.inlineComments);
@@ -448,19 +461,21 @@ const EssayEditor: React.FC = () => {
         </div>
       )}
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Essay Editor</h1>
-            <p className="text-sm text-gray-600 mt-0.5">Write and manage your college application essays</p>
+        {viewMode === 'list' && (
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Essay Editor</h1>
+              <p className="text-sm text-gray-600 mt-0.5">Write and manage your college application essays</p>
+            </div>
+            <button
+              onClick={() => setShowNewEssayForm(true)}
+              className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 text-sm rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New Essay
+            </button>
           </div>
-          <button
-            onClick={() => setShowNewEssayForm(true)}
-            className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 text-sm rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Essay
-          </button>
-        </div>
+        )}
 
         {showNewEssayForm && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
@@ -709,6 +724,7 @@ const EssayEditor: React.FC = () => {
                       <p className="text-sm text-slate-600">
                         {getTypeLabel(selectedEssay.type)}
                         {selectedEssay.universityName && ` • ${selectedEssay.universityName}`}
+                        {wordCount > 0 && ` • ${wordCount} words`}
                       </p>
                     </div>
                     {selectedEssay.reviewData?.rubricFeedback && (
