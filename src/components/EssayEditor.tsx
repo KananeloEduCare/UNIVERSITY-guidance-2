@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bold, Italic, Underline, Save, Send, Plus, FileText, Edit2, Trash2, ChevronDown, List, CheckCircle, MessageSquare, Star, ArrowLeft } from 'lucide-react';
+import { Bold, Italic, Underline, Save, Send, Plus, FileText, CreditCard as Edit2, Trash2, ChevronDown, List, CheckCircle, MessageSquare, Star, ArrowLeft } from 'lucide-react';
 import { database } from '../config/firebase';
 import { ref, set, onValue, remove } from 'firebase/database';
 import { userStorage } from '../services/userStorage';
