@@ -63,9 +63,7 @@ const EssayEditor: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
-  const [activeComment, setActiveComment] = useState<InlineComment | null>(null);
   const [showRubricFeedback, setShowRubricFeedback] = useState(false);
-  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
   const [activeCategory, setActiveCategory] = useState<'draft' | 'submitted' | 'reviewed'>('draft');
   const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
 
@@ -201,7 +199,7 @@ const EssayEditor: React.FC = () => {
         const node = walker.currentNode as Text;
         const nodeLength = node.length;
 
-        if (!foundStart && currentPos + nodeLength >= comment.start_position) {
+        if (!foundStart && currentPos + nodeLength > comment.start_position) {
           startNode = node;
           startOffset = comment.start_position - currentPos;
           foundStart = true;
@@ -222,25 +220,17 @@ const EssayEditor: React.FC = () => {
         range.setEnd(endNode, endOffset);
 
         const mark = document.createElement('mark');
-        mark.className = `cursor-pointer transition-colors ${
-          activeComment?.id === comment.id
-            ? 'bg-yellow-300 border-b-2 border-yellow-600'
-            : 'bg-yellow-200 border-b-2 border-yellow-500 hover:bg-yellow-300'
-        }`;
+        mark.className = 'bg-yellow-200 cursor-pointer hover:bg-yellow-300 transition-colors relative group';
         mark.setAttribute('data-comment-id', comment.id);
-
-        mark.onclick = (e) => {
-          e.stopPropagation();
-          const rect = (e.target as HTMLElement).getBoundingClientRect();
-          setPopupPosition({
-            top: rect.bottom + window.scrollY + 8,
-            left: rect.left + window.scrollX
-          });
-          setActiveComment(comment);
-        };
+        mark.title = comment.comment_text;
 
         try {
           range.surroundContents(mark);
+
+          const tooltip = document.createElement('span');
+          tooltip.className = 'invisible group-hover:visible absolute bottom-full left-0 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg z-10 pointer-events-none';
+          tooltip.innerHTML = `<div class="font-semibold mb-1">${comment.counselor_name}</div><div>${comment.comment_text}</div>`;
+          mark.appendChild(tooltip);
         } catch (e) {
           console.warn('Could not apply highlight', e);
         }
@@ -437,22 +427,7 @@ const EssayEditor: React.FC = () => {
         applyHighlightsToReviewedEssay(selectedEssay.reviewData!.inlineComments);
       }, 50);
     }
-  }, [selectedEssay?.id, activeComment]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (activeComment) {
-        const target = e.target as HTMLElement;
-        if (!target.closest('.comment-popup') && !target.closest('.bg-yellow-200') && !target.closest('.bg-yellow-300')) {
-          setActiveComment(null);
-          setPopupPosition(null);
-        }
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [activeComment]);
+  }, [selectedEssay?.id]);
 
   if (loading) {
     return (
@@ -717,73 +692,35 @@ const EssayEditor: React.FC = () => {
           </div>
         )}
 
-        {viewMode === 'editor' && selectedEssay && (
-          <div className="mb-4">
-            <button
-              onClick={handleBackToList}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">Back to Essays</span>
-            </button>
-          </div>
-        )}
-
-        <div className="relative">
-          {activeComment && popupPosition && (
-            <div
-              className="comment-popup fixed z-50 bg-white rounded-xl shadow-2xl border border-lime-300 max-w-md animate-in fade-in slide-in-from-top-2 duration-200"
-              style={{
-                top: `${popupPosition.top}px`,
-                left: `${popupPosition.left}px`,
-                maxHeight: '300px',
-                overflowY: 'auto'
-              }}
-            >
-              <div className="px-5 py-4">
-                <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 bg-lime-100 rounded-lg">
-                        <MessageSquare className="w-4 h-4 text-lime-600" />
-                      </div>
-                      <p className="text-sm font-bold text-gray-900">
-                        {activeComment.counselor_name}
-                      </p>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1 ml-9">
-                      Reviewed {activeComment.created_at ? formatReviewDate(activeComment.created_at) : 'recently'}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setActiveComment(null);
-                      setPopupPosition(null);
-                    }}
-                    className="ml-6 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {activeComment.comment_text}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {viewMode === 'editor' && selectedEssay ? (
+        {viewMode === 'editor' && selectedEssay ? (
             selectedEssay.status === 'reviewed' ? (
               <div className="-mx-4">
                 <div className="bg-gradient-to-r from-[#04ADEE]/10 via-emerald-50 to-[#04ADEE]/10 border-b border-[#04ADEE]/20 px-8 py-4">
-                  <h2 className="text-xl font-bold text-slate-900 mb-1">{selectedEssay.title}</h2>
-                  <p className="text-sm text-slate-600">
-                    {getTypeLabel(selectedEssay.type)}
-                    {selectedEssay.universityName && ` • ${selectedEssay.universityName}`}
-                    {' • '}{selectedEssay.wordCount} words
-                  </p>
+                  <button
+                    onClick={handleBackToList}
+                    className="flex items-center gap-2 text-[#04ADEE] hover:text-[#0396d5] mb-3 transition-colors font-medium"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Essays
+                  </button>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h2 className="text-xl font-bold text-slate-900 mb-1">{selectedEssay.title}</h2>
+                      <p className="text-sm text-slate-600">
+                        {getTypeLabel(selectedEssay.type)}
+                        {selectedEssay.universityName && ` • ${selectedEssay.universityName}`}
+                      </p>
+                    </div>
+                    {selectedEssay.reviewData?.rubricFeedback && (
+                      <button
+                        onClick={() => setShowRubricFeedback(!showRubricFeedback)}
+                        className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm"
+                      >
+                        <Star className="w-4 h-4" />
+                        {showRubricFeedback ? 'Hide' : 'View'} Feedback
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="px-8 py-6">
@@ -854,50 +791,6 @@ const EssayEditor: React.FC = () => {
                               </div>
                             ))}
                           </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="max-w-7xl mx-auto mt-6">
-                    <div className="flex justify-center gap-3 mb-6">
-                      {selectedEssay.reviewData?.rubricFeedback && (
-                        <button
-                          onClick={() => setShowRubricFeedback(!showRubricFeedback)}
-                          className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm shadow-md"
-                        >
-                          <Star className="w-4 h-4" />
-                          {showRubricFeedback ? 'Hide' : 'View'} Feedback
-                        </button>
-                      )}
-                    </div>
-
-                    {!showRubricFeedback && selectedEssay.reviewData?.generalComments && selectedEssay.reviewData.generalComments.length > 0 && (
-                      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 max-w-5xl mx-auto">
-                        <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-blue-600" />
-                          General Feedback
-                        </h3>
-
-                        <div className="space-y-3">
-                          {selectedEssay.reviewData.generalComments.map((comment) => (
-                            <div
-                              key={comment.id}
-                              className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <p className="text-xs font-semibold text-gray-700">
-                                  {comment.counselor_name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {new Date(comment.created_at).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <p className="text-sm text-gray-700 leading-relaxed">
-                                {comment.comment_text}
-                              </p>
-                            </div>
-                          ))}
                         </div>
                       </div>
                     )}
@@ -1136,7 +1029,6 @@ const EssayEditor: React.FC = () => {
           ) : null}
         </div>
       </div>
-    </div>
   );
 };
 
