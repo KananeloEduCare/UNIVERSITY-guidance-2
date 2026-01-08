@@ -891,13 +891,13 @@ const EssayEditor: React.FC = () => {
               </div>
 
               {selectedEssay.status === 'reviewed' && selectedEssay.reviewData?.rubricFeedback && showRubricFeedback && (
-                <div className="border-t border-gray-200 p-4 bg-gradient-to-br from-emerald-50 to-blue-50">
+                <div className="border-t border-gray-200 p-4 bg-gradient-to-br from-emerald-50 to-blue-50 max-h-[70vh] overflow-y-auto">
                   <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <Star className="w-4 h-4 text-emerald-600" />
                     Rubric Feedback
                   </h3>
 
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  <div className="space-y-3">
                     {selectedEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
                       <div
                         key={index}
