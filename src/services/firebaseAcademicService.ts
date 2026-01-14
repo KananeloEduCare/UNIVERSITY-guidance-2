@@ -28,10 +28,21 @@ export interface AcademicSummary {
 
 export const getCounselorAcademicData = async (counselorName: string): Promise<AcademicSummary> => {
   try {
-    const caseloadRef = ref(database, `Schoolss/University Data/Caseloads/${counselorName}`);
+    console.log('=== FETCHING COUNSELOR ACADEMIC DATA (FIREBASE) ===');
+    console.log('Counselor Name:', counselorName);
+
+    const caseloadPath = `Schoolss/University Data/Caseloads/${counselorName}`;
+    console.log('Firebase Path for Caseload:', caseloadPath);
+
+    const caseloadRef = ref(database, caseloadPath);
     const caseloadSnapshot = await get(caseloadRef);
 
+    console.log('1. Caseload Query Result:');
+    console.log('   - Exists:', caseloadSnapshot.exists());
+    console.log('   - Raw Data:', caseloadSnapshot.val());
+
     if (!caseloadSnapshot.exists()) {
+      console.log('❌ No caseload found for counselor:', counselorName);
       return {
         totalStudents: 0,
         averageGrade: 0,
@@ -41,26 +52,42 @@ export const getCounselorAcademicData = async (counselorName: string): Promise<A
 
     const caseloadData = caseloadSnapshot.val();
     const studentNames = Object.keys(caseloadData);
+    console.log('2. Student Names in Caseload:', studentNames);
+    console.log('   - Count:', studentNames.length);
+
     const students: StudentAcademicData[] = [];
 
     for (const studentName of studentNames) {
-      const studentAcademicRef = ref(database, `Schoolss/University Data/Student Academics/${studentName}`);
+      console.log(`\n--- Processing Student: ${studentName} ---`);
+
+      const academicPath = `Schoolss/University Data/Student Academics/${studentName}`;
+      console.log('   Firebase Path:', academicPath);
+
+      const studentAcademicRef = ref(database, academicPath);
       const studentSnapshot = await get(studentAcademicRef);
+
+      console.log('   Snapshot Exists:', studentSnapshot.exists());
+      console.log('   Raw Data:', studentSnapshot.val());
 
       if (studentSnapshot.exists()) {
         const studentData = studentSnapshot.val();
 
         const overallAverage = studentData['Overall Average'] || 0;
+        console.log('   Overall Average:', overallAverage);
 
         const subjectAverages: SubjectAverage[] = [];
         if (studentData['Subject Averages']) {
           const subjects = studentData['Subject Averages'];
+          console.log('   Subject Averages Data:', subjects);
           for (const subject in subjects) {
             subjectAverages.push({
               subject,
               grade: subjects[subject]
             });
           }
+          console.log('   Parsed Subject Averages:', subjectAverages);
+        } else {
+          console.log('   ⚠️ No Subject Averages found for', studentName);
         }
 
         const previousAverages: PreviousYearData[] = [];
@@ -90,13 +117,18 @@ export const getCounselorAcademicData = async (counselorName: string): Promise<A
           }
         }
 
-        students.push({
+        const studentRecord = {
           studentName,
           overallAverage,
           numCourses: subjectAverages.length,
           subjectAverages,
           previousAverages
-        });
+        };
+
+        console.log('   ✅ Added Student Record:', studentRecord);
+        students.push(studentRecord);
+      } else {
+        console.log(`   ❌ No academic data found for: ${studentName}`);
       }
     }
 
@@ -105,13 +137,19 @@ export const getCounselorAcademicData = async (counselorName: string): Promise<A
       ? students.reduce((sum, student) => sum + student.overallAverage, 0) / totalStudents
       : 0;
 
+    console.log('\n=== FINAL SUMMARY ===');
+    console.log('Total Students:', totalStudents);
+    console.log('Average Grade:', Math.round(averageGrade * 10) / 10);
+    console.log('Students Array:', students);
+    console.log('=== END FETCH ===\n');
+
     return {
       totalStudents,
       averageGrade: Math.round(averageGrade * 10) / 10,
       students
     };
   } catch (error) {
-    console.error('Error fetching counselor academic data:', error);
+    console.error('❌ ERROR in getCounselorAcademicData:', error);
     throw error;
   }
 };

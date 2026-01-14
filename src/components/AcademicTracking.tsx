@@ -18,16 +18,31 @@ const AcademicTracking: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('🔄 AcademicTracking: Starting data fetch from FIREBASE...');
         setLoading(true);
+
         const counselorName = localStorage.getItem('counselor_name') || 'Mr Adoniyas Tesfaye';
+        console.log('👤 Counselor from localStorage:', counselorName);
+
         const data = await getCounselorAcademicData(counselorName);
+
+        console.log('📊 Data received from Firebase service:');
+        console.log('  - Total Students:', data.totalStudents);
+        console.log('  - Average Grade:', data.averageGrade);
+        console.log('  - Students Array:', data.students);
+        console.log('  - Number of Students in Array:', data.students.length);
+
         setStudents(data.students);
         setTotalStudents(data.totalStudents);
         setAverageGrade(data.averageGrade);
+
+        console.log('✅ State updated successfully');
+        console.log('  - filteredStudents will have:', data.students.length, 'students');
       } catch (error) {
-        console.error('Error fetching academic data:', error);
+        console.error('❌ Error in AcademicTracking component:', error);
       } finally {
         setLoading(false);
+        console.log('🏁 Loading complete');
       }
     };
 
@@ -35,9 +50,13 @@ const AcademicTracking: React.FC = () => {
   }, []);
 
   const handleStudentClick = (studentName: string) => {
+    console.log('🔍 Clicking on student:', studentName);
     const student = students.find(s => s.studentName === studentName);
     if (student) {
+      console.log('✅ Found student data:', student);
       setSelectedStudent(student);
+    } else {
+      console.log('❌ Student not found in array');
     }
   };
 
@@ -45,11 +64,23 @@ const AcademicTracking: React.FC = () => {
     setSelectedStudent(null);
   };
 
+  console.log('📋 Current students array length:', students.length);
+  console.log('🔍 Current search term:', searchTerm);
+
   const filteredStudents = students
-    .filter(student =>
-      student.studentName.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    .filter(student => {
+      const matches = student.studentName.toLowerCase().includes(searchTerm.toLowerCase());
+      if (!matches && searchTerm) {
+        console.log(`Filtering OUT ${student.studentName} (doesn't match "${searchTerm}")`);
+      }
+      return matches;
+    })
     .sort((a, b) => b.overallAverage - a.overallAverage);
+
+  console.log('📋 Filtered Students Count:', filteredStudents.length, 'out of', students.length);
+  if (filteredStudents.length > 0) {
+    console.log('📋 Filtered Students:', filteredStudents.map(s => s.studentName));
+  }
 
   const getRankBadge = (rank: number) => {
     if (rank === 1) {
