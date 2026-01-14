@@ -1,142 +1,44 @@
-import React, { useState } from 'react';
-import { BookOpen, TrendingUp, ArrowLeft, GraduationCap, Users, Target, Search, Trophy, Medal } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, TrendingUp, ArrowLeft, GraduationCap, Users, Search, Trophy, Medal } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import AnimatedCounter from './AnimatedCounter';
 import CircularProgress from './CircularProgress';
+import { getCounselorAcademicData, StudentAcademicData } from '../services/firebaseAcademicService';
 
-interface Course {
-  id: string;
-  course_name: string;
-  course_code: string;
-  current_grade: number;
-  syllabus_completion: number;
-  total_assignments: number;
-  completed_assignments: number;
-  teacher_report: string;
-  report_date: string;
-}
 
-interface StudentDetails {
-  student_id: string;
-  student_name: string;
-  overall_average: number;
-  overall_syllabus_completion: number;
-  courses: Course[];
-}
-
-const DUMMY_STUDENTS = [
-  {
-    student_id: '1',
-    student_name: 'Alexander Lee',
-    overall_average: 91,
-    num_courses: 6,
-  },
-  {
-    student_id: '2',
-    student_name: 'Sophia Martinez',
-    overall_average: 87,
-    num_courses: 6,
-  },
-  {
-    student_id: '3',
-    student_name: 'Ethan Johnson',
-    overall_average: 73,
-    num_courses: 6,
-  },
-  {
-    student_id: '4',
-    student_name: 'Olivia Chen',
-    overall_average: 94,
-    num_courses: 6,
-  },
-  {
-    student_id: '5',
-    student_name: 'Marcus Williams',
-    overall_average: 82,
-    num_courses: 6,
-  },
-];
-
-const STUDENT_DETAILS: Record<string, StudentDetails> = {
-  '1': {
-    student_id: '1',
-    student_name: 'Alexander Lee',
-    overall_average: 91,
-    overall_syllabus_completion: 87,
-    courses: [
-      { id: '1', course_name: 'Mathematics HL', course_code: 'MATH-HL', current_grade: 94, syllabus_completion: 88, total_assignments: 12, completed_assignments: 11, teacher_report: 'Alexander demonstrates exceptional understanding of calculus concepts. His problem-solving approach is methodical and creative. Continue to challenge him with advanced problems.', report_date: '2024-03-15' },
-      { id: '2', course_name: 'Physics HL', course_code: 'PHYS-HL', current_grade: 92, syllabus_completion: 85, total_assignments: 14, completed_assignments: 13, teacher_report: 'Strong grasp of theoretical concepts and experimental design. Lab reports are thorough and well-documented. Excellent collaboration during group projects.', report_date: '2024-03-12' },
-      { id: '3', course_name: 'Chemistry HL', course_code: 'CHEM-HL', current_grade: 89, syllabus_completion: 82, total_assignments: 13, completed_assignments: 12, teacher_report: 'Good understanding of chemical reactions and bonding. Would benefit from more practice with complex stoichiometry problems. Lab technique is excellent.', report_date: '2024-03-10' },
-      { id: '4', course_name: 'English A SL', course_code: 'ENG-SL', current_grade: 91, syllabus_completion: 90, total_assignments: 10, completed_assignments: 10, teacher_report: 'Insightful literary analysis with strong critical thinking. Essays are well-structured and demonstrate deep engagement with texts. Excellent participation in discussions.', report_date: '2024-03-14' },
-      { id: '5', course_name: 'Spanish B SL', course_code: 'SPAN-SL', current_grade: 88, syllabus_completion: 86, total_assignments: 11, completed_assignments: 10, teacher_report: 'Strong oral proficiency and good grammatical accuracy. Written compositions show creativity. Continue practicing verb conjugations in subjunctive mood.', report_date: '2024-03-11' },
-      { id: '6', course_name: 'Economics SL', course_code: 'ECON-SL', current_grade: 93, syllabus_completion: 89, total_assignments: 12, completed_assignments: 11, teacher_report: 'Excellent grasp of micro and macroeconomic principles. Case study analyses are particularly strong. Shows ability to apply theory to real-world scenarios effectively.', report_date: '2024-03-13' },
-    ],
-  },
-  '2': {
-    student_id: '2',
-    student_name: 'Sophia Martinez',
-    overall_average: 87,
-    overall_syllabus_completion: 83,
-    courses: [
-      { id: '7', course_name: 'Mathematics HL', course_code: 'MATH-HL', current_grade: 88, syllabus_completion: 82, total_assignments: 12, completed_assignments: 10, teacher_report: 'Sophia shows consistent effort and steady improvement in mathematics. Her algebra skills are strong. Recommend additional practice with trigonometric identities.', report_date: '2024-03-14' },
-      { id: '8', course_name: 'Biology HL', course_code: 'BIO-HL', current_grade: 90, syllabus_completion: 87, total_assignments: 14, completed_assignments: 13, teacher_report: 'Outstanding performance in cellular biology and genetics. Lab dissections demonstrate excellent attention to detail. A natural curiosity drives her learning.', report_date: '2024-03-13' },
-      { id: '9', course_name: 'Chemistry HL', course_code: 'CHEM-HL', current_grade: 86, syllabus_completion: 80, total_assignments: 13, completed_assignments: 11, teacher_report: 'Solid understanding of fundamental concepts. Organic chemistry assignments show promise. Would benefit from attending extra help sessions for titration calculations.', report_date: '2024-03-11' },
-      { id: '10', course_name: 'English A SL', course_code: 'ENG-SL', current_grade: 87, syllabus_completion: 85, total_assignments: 10, completed_assignments: 9, teacher_report: 'Good analytical skills in poetry analysis. Written expression is clear and organized. Encourage more participation during class discussions to build confidence.', report_date: '2024-03-15' },
-      { id: '11', course_name: 'French B SL', course_code: 'FR-SL', current_grade: 84, syllabus_completion: 81, total_assignments: 11, completed_assignments: 9, teacher_report: 'Developing strong reading comprehension skills. Pronunciation has improved significantly this term. Continue working on expanding vocabulary for more complex topics.', report_date: '2024-03-12' },
-      { id: '12', course_name: 'Psychology SL', course_code: 'PSY-SL', current_grade: 89, syllabus_completion: 84, total_assignments: 12, completed_assignments: 11, teacher_report: 'Excellent critical analysis of psychological theories. Research project on cognitive biases was particularly impressive. Active contributor to class discussions.', report_date: '2024-03-14' },
-    ],
-  },
-  '3': {
-    student_id: '3',
-    student_name: 'Ethan Johnson',
-    overall_average: 73,
-    overall_syllabus_completion: 71,
-    courses: [
-      { id: '13', course_name: 'Mathematics SL', course_code: 'MATH-SL', current_grade: 75, syllabus_completion: 72, total_assignments: 12, completed_assignments: 9, teacher_report: 'Ethan is working hard to improve his mathematical skills. He benefits greatly from one-on-one tutoring sessions. Needs to stay consistent with homework completion.', report_date: '2024-03-13' },
-      { id: '14', course_name: 'Physics SL', course_code: 'PHYS-SL', current_grade: 71, syllabus_completion: 68, total_assignments: 14, completed_assignments: 10, teacher_report: 'Struggles with abstract concepts but shows determination. Visual demonstrations help his understanding. Recommend using online simulation tools for extra practice.', report_date: '2024-03-11' },
-      { id: '15', course_name: 'Geography HL', course_code: 'GEO-HL', current_grade: 76, syllabus_completion: 74, total_assignments: 13, completed_assignments: 10, teacher_report: 'Strong interest in environmental topics. Field trip notes were excellent. Map work needs improvement, particularly scale and projection concepts.', report_date: '2024-03-15' },
-      { id: '16', course_name: 'English A SL', course_code: 'ENG-SL', current_grade: 72, syllabus_completion: 70, total_assignments: 10, completed_assignments: 7, teacher_report: 'Creative ideas in writing but needs to work on essay structure. Missing assignments have affected grade. One-on-one conferences have been helpful for organizing thoughts.', report_date: '2024-03-12' },
-      { id: '17', course_name: 'Spanish B SL', course_code: 'SPAN-SL', current_grade: 70, syllabus_completion: 69, total_assignments: 11, completed_assignments: 8, teacher_report: 'Finding language acquisition challenging but maintains positive attitude. Oral presentations show improvement. Needs consistent practice with verb tenses and vocabulary.', report_date: '2024-03-10' },
-      { id: '18', course_name: 'Business SL', course_code: 'BUS-SL', current_grade: 74, syllabus_completion: 73, total_assignments: 12, completed_assignments: 9, teacher_report: 'Good understanding of basic business concepts. Particularly engaged during case study discussions. Written assignments would benefit from more detailed analysis and examples.', report_date: '2024-03-14' },
-    ],
-  },
-  '4': {
-    student_id: '4',
-    student_name: 'Olivia Chen',
-    overall_average: 94,
-    overall_syllabus_completion: 92,
-    courses: [
-      { id: '19', course_name: 'Mathematics HL', course_code: 'MATH-HL', current_grade: 96, syllabus_completion: 94, total_assignments: 12, completed_assignments: 12, teacher_report: 'Olivia is an exceptional mathematics student. Her proof writing is elegant and logical. She regularly helps peers during study sessions. Consider preparing for advanced mathematics competitions.', report_date: '2024-03-15' },
-      { id: '20', course_name: 'Physics HL', course_code: 'PHYS-HL', current_grade: 95, syllabus_completion: 93, total_assignments: 14, completed_assignments: 14, teacher_report: 'Outstanding analytical and problem-solving abilities. Lab reports are comprehensive and show deep understanding. Quantum mechanics unit was handled with remarkable maturity.', report_date: '2024-03-14' },
-      { id: '21', course_name: 'Chemistry HL', course_code: 'CHEM-HL', current_grade: 94, syllabus_completion: 92, total_assignments: 13, completed_assignments: 13, teacher_report: 'Exemplary work in all areas. Demonstrates mastery of both theoretical and practical chemistry. Independent research project on catalysis was publication-quality work.', report_date: '2024-03-13' },
-      { id: '22', course_name: 'English A SL', course_code: 'ENG-SL', current_grade: 93, syllabus_completion: 91, total_assignments: 10, completed_assignments: 10, teacher_report: 'Sophisticated literary analysis with nuanced interpretations. Writing demonstrates exceptional clarity and depth. A consistent leader in seminar discussions.', report_date: '2024-03-15' },
-      { id: '23', course_name: 'Mandarin B SL', course_code: 'MAND-SL', current_grade: 95, syllabus_completion: 93, total_assignments: 11, completed_assignments: 11, teacher_report: 'Near-native fluency with excellent character recognition. Cultural presentations show deep understanding and research. Peer tutoring has been invaluable to the class.', report_date: '2024-03-12' },
-      { id: '24', course_name: 'Economics SL', course_code: 'ECON-SL', current_grade: 91, syllabus_completion: 89, total_assignments: 12, completed_assignments: 11, teacher_report: 'Strong analytical skills applied to economic models. Policy analysis essays demonstrate critical thinking. Particularly strong in understanding market dynamics and elasticity.', report_date: '2024-03-14' },
-    ],
-  },
-  '5': {
-    student_id: '5',
-    student_name: 'Marcus Williams',
-    overall_average: 82,
-    overall_syllabus_completion: 79,
-    courses: [
-      { id: '25', course_name: 'Mathematics SL', course_code: 'MATH-SL', current_grade: 83, syllabus_completion: 80, total_assignments: 12, completed_assignments: 10, teacher_report: 'Marcus demonstrates solid grasp of core concepts. His problem-solving has improved steadily this term. Would benefit from completing all practice assignments for better retention.', report_date: '2024-03-14' },
-      { id: '26', course_name: 'Biology HL', course_code: 'BIO-HL', current_grade: 85, syllabus_completion: 82, total_assignments: 14, completed_assignments: 12, teacher_report: 'Shows particular strength in ecology and environmental science. Lab notebook is well-organized. Genetics unit requires some additional review for full mastery.', report_date: '2024-03-13' },
-      { id: '27', course_name: 'History HL', course_code: 'HIST-HL', current_grade: 81, syllabus_completion: 78, total_assignments: 13, completed_assignments: 11, teacher_report: 'Good analytical approach to historical events. Essays show understanding but could be more detailed with primary source analysis. Classroom discussions are insightful.', report_date: '2024-03-12' },
-      { id: '28', course_name: 'English A SL', course_code: 'ENG-SL', current_grade: 80, syllabus_completion: 77, total_assignments: 10, completed_assignments: 8, teacher_report: 'Developing strong analytical reading skills. Writing shows promise but needs work on thesis development. Recent essay on symbolism showed marked improvement.', report_date: '2024-03-15' },
-      { id: '29', course_name: 'Spanish B SL', course_code: 'SPAN-SL', current_grade: 82, syllabus_completion: 79, total_assignments: 11, completed_assignments: 9, teacher_report: 'Good conversational ability with growing confidence. Grammar exercises are generally accurate. Cultural project on Latin American literature was well-researched.', report_date: '2024-03-11' },
-      { id: '30', course_name: 'Psychology SL', course_code: 'PSY-SL', current_grade: 81, syllabus_completion: 78, total_assignments: 12, completed_assignments: 10, teacher_report: 'Engaged learner with good understanding of psychological principles. Research methods section was challenging but he persevered. Contribute more during group activities.', report_date: '2024-03-14' },
-    ],
-  },
-};
 
 const AcademicTracking: React.FC = () => {
-  const [students] = useState(DUMMY_STUDENTS);
-  const [selectedStudent, setSelectedStudent] = useState<StudentDetails | null>(null);
+  const [students, setStudents] = useState<StudentAcademicData[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<StudentAcademicData | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [averageGrade, setAverageGrade] = useState(0);
 
-  const handleStudentClick = (studentId: string) => {
-    setSelectedStudent(STUDENT_DETAILS[studentId]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const counselorName = localStorage.getItem('counselor_name') || 'Mr Adoniyas Tesfaye';
+        const data = await getCounselorAcademicData(counselorName);
+        setStudents(data.students);
+        setTotalStudents(data.totalStudents);
+        setAverageGrade(data.averageGrade);
+      } catch (error) {
+        console.error('Error fetching academic data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleStudentClick = (studentName: string) => {
+    const student = students.find(s => s.studentName === studentName);
+    if (student) {
+      setSelectedStudent(student);
+    }
   };
 
   const handleBack = () => {
@@ -145,9 +47,9 @@ const AcademicTracking: React.FC = () => {
 
   const filteredStudents = students
     .filter(student =>
-      student.student_name.toLowerCase().includes(searchTerm.toLowerCase())
+      student.studentName.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .sort((a, b) => b.overall_average - a.overall_average);
+    .sort((a, b) => b.overallAverage - a.overallAverage);
 
   const getRankBadge = (rank: number) => {
     if (rank === 1) {
@@ -188,17 +90,20 @@ const AcademicTracking: React.FC = () => {
     return '#ef4444';
   };
 
-  const avgGrade = filteredStudents.length > 0
-    ? filteredStudents.reduce((acc, s) => acc + s.overall_average, 0) / filteredStudents.length
-    : 0;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#04ADEE]"></div>
+      </div>
+    );
+  }
 
-  const totalCourses = filteredStudents.reduce((acc, s) => acc + s.num_courses, 0);
 
   if (selectedStudent) {
-    const chartData = selectedStudent.courses.map(course => ({
-      name: course.course_code,
-      grade: course.current_grade,
-      fullName: course.course_name,
+    const chartData = selectedStudent.subjectAverages.map(subject => ({
+      name: subject.subject.length > 12 ? subject.subject.substring(0, 12) + '...' : subject.subject,
+      grade: subject.grade,
+      fullName: subject.subject,
     }));
 
     return (
@@ -211,7 +116,7 @@ const AcademicTracking: React.FC = () => {
             <ArrowLeft className="w-4 h-4" />
             Back to Students
           </button>
-          <h2 className="text-xl font-bold text-slate-900">{selectedStudent.student_name}</h2>
+          <h2 className="text-xl font-bold text-slate-900">{selectedStudent.studentName}</h2>
         </div>
 
         <div className="px-8 py-6">
@@ -248,37 +153,44 @@ const AcademicTracking: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-            <h3 className="text-base font-semibold text-slate-800 mb-3">Course Details</h3>
-            <div className="space-y-2">
-              {selectedStudent.courses.map((course) => (
-                <div
-                  key={course.id}
-                  className="bg-slate-50 rounded-lg p-3 border border-slate-200 hover:border-[#04ADEE] transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <h4 className="text-sm font-semibold text-slate-800">{course.course_name}</h4>
-                      <p className="text-xs text-slate-500">{course.course_code}</p>
+            <h3 className="text-base font-semibold text-slate-800 mb-3">Academic History</h3>
+            {selectedStudent.previousAverages.length === 0 ? (
+              <div className="text-center py-8">
+                <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                <p className="text-slate-500">No previous academic records available</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {selectedStudent.previousAverages.map((yearData, index) => (
+                  <div
+                    key={index}
+                    className="bg-slate-50 rounded-lg p-4 border border-slate-200"
+                  >
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="text-sm font-bold text-slate-800">{yearData.year}</h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500">Overall Average:</span>
+                        <span className="text-base font-bold text-[#04ADEE]">{yearData.overallAverage}%</span>
+                      </div>
                     </div>
-                    <div className="ml-3 flex flex-col items-end">
-                      <span className="text-xs text-slate-500 mb-0.5">Syllabus Progress</span>
-                      <span className="text-sm font-bold text-[#04ADEE]">
-                        {course.syllabus_completion}%
-                      </span>
+                    <div className="border-t border-slate-200 pt-3">
+                      <p className="text-xs font-semibold text-slate-700 mb-2">Subject Grades</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {yearData.subjects.map((subject, subIndex) => (
+                          <div
+                            key={subIndex}
+                            className="bg-white rounded px-3 py-2 border border-slate-200"
+                          >
+                            <p className="text-xs text-slate-600 mb-0.5">{subject.subject}</p>
+                            <p className="text-sm font-bold text-slate-800">{subject.grade}%</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <div className="border-t border-slate-200 pt-2">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <p className="text-xs font-semibold text-slate-700">Teacher Report</p>
-                      <p className="text-xs text-slate-500">{new Date(course.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      {course.teacher_report}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -300,7 +212,7 @@ const AcademicTracking: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-slate-500" />
@@ -308,7 +220,7 @@ const AcademicTracking: React.FC = () => {
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-slate-900">
-                  <AnimatedCounter end={filteredStudents.length} duration={1500} />
+                  <AnimatedCounter end={totalStudents} duration={1500} />
                 </span>
                 <span className="text-sm text-slate-600">Students</span>
               </div>
@@ -321,22 +233,9 @@ const AcademicTracking: React.FC = () => {
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-[#04ADEE]">
-                  <AnimatedCounter end={avgGrade} duration={1500} decimals={1} />
+                  <AnimatedCounter end={averageGrade} duration={1500} decimals={1} />
                 </span>
                 <span className="text-sm text-slate-600">%</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="w-4 h-4 text-slate-500" />
-                <span className="text-xs font-medium text-slate-600">Total Courses</span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-slate-900">
-                  <AnimatedCounter end={totalCourses} duration={1500} />
-                </span>
-                <span className="text-sm text-slate-600">Courses</span>
               </div>
             </div>
           </div>
@@ -369,8 +268,8 @@ const AcademicTracking: React.FC = () => {
               const rank = index + 1;
               return (
                 <div
-                  key={student.student_id}
-                  onClick={() => handleStudentClick(student.student_id)}
+                  key={student.studentName}
+                  onClick={() => handleStudentClick(student.studentName)}
                   className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-all cursor-pointer border border-slate-200 hover:border-[#04ADEE]"
                 >
                   <div className="flex items-center gap-4">
@@ -378,26 +277,26 @@ const AcademicTracking: React.FC = () => {
                       {getRankBadge(rank)}
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-base font-semibold text-slate-800 mb-2">{student.student_name}</h3>
+                      <h3 className="text-base font-semibold text-slate-800 mb-2">{student.studentName}</h3>
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                           <BookOpen className="w-3.5 h-3.5 text-slate-500" />
                           <span className="text-sm text-slate-600">
-                            {student.num_courses} {student.num_courses === 1 ? 'course' : 'courses'}
+                            {student.numCourses} {student.numCourses === 1 ? 'course' : 'courses'}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center justify-center">
                       <CircularProgress
-                        percentage={student.overall_average}
+                        percentage={student.overallAverage}
                         size={80}
                         strokeWidth={6}
-                        color={getGradeColor(student.overall_average)}
+                        color={getGradeColor(student.overallAverage)}
                       >
                         <div className="text-center">
-                          <p className="text-xl font-bold" style={{ color: getGradeColor(student.overall_average) }}>
-                            {student.overall_average}%
+                          <p className="text-xl font-bold" style={{ color: getGradeColor(student.overallAverage) }}>
+                            {student.overallAverage}%
                           </p>
                           <p className="text-[10px] text-slate-500">Avg</p>
                         </div>
