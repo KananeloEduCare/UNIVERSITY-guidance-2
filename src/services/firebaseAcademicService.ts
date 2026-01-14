@@ -31,7 +31,7 @@ export const getCounselorAcademicData = async (counselorName: string): Promise<A
     console.log('=== FETCHING COUNSELOR ACADEMIC DATA (FIREBASE) ===');
     console.log('Counselor Name:', counselorName);
 
-    const caseloadPath = `Schoolss/University Data/Caseloads/${counselorName}`;
+    const caseloadPath = `University Data/Caseloads/${counselorName}`;
     console.log('Firebase Path for Caseload:', caseloadPath);
 
     const caseloadRef = ref(database, caseloadPath);
@@ -60,7 +60,7 @@ export const getCounselorAcademicData = async (counselorName: string): Promise<A
     for (const studentName of studentNames) {
       console.log(`\n--- Processing Student: ${studentName} ---`);
 
-      const academicPath = `Schoolss/University Data/Student Academics/${studentName}`;
+      const academicPath = `University Data/Student Academics/${studentName}`;
       console.log('   Firebase Path:', academicPath);
 
       const studentAcademicRef = ref(database, academicPath);
@@ -156,7 +156,7 @@ export const getCounselorAcademicData = async (counselorName: string): Promise<A
 
 export const getStudentAcademicDetails = async (studentName: string): Promise<StudentAcademicData | null> => {
   try {
-    const studentAcademicRef = ref(database, `Schoolss/University Data/Student Academics/${studentName}`);
+    const studentAcademicRef = ref(database, `University Data/Student Academics/${studentName}`);
     const studentSnapshot = await get(studentAcademicRef);
 
     if (!studentSnapshot.exists()) {
