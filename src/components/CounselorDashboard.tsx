@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, Award, BookOpen, X, Users, UserCheck, LogOut, ChevronLeft, ChevronRight, GraduationCap, FileText, Calendar, MessageSquare, User } from 'lucide-react';
 import CounselorScholarshipsPage from './CounselorScholarshipsPage';
 import CounselorResourcesPage from './CounselorResourcesPage';
@@ -13,6 +13,7 @@ import StudentProfiles from './StudentProfiles';
 import StudentProfileDetails from './StudentProfileDetails';
 import { Counselor } from '../services/counselorAuthService';
 import { useNotificationCounts } from '../hooks/useNotificationCounts';
+import { getCounselorPoolData, PoolStudent } from '../services/poolManagementService';
 
 type TabType = 'academic' | 'active' | 'assigned' | 'essays' | 'scholarships' | 'resources' | 'meetings' | 'inbox' | 'student_profiles';
 type CompositeFilter = 'all' | '90-100' | '80-89' | '70-79' | 'below-70';
@@ -176,7 +177,28 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
   const [viewingStudentId, setViewingStudentId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedStudentProfileId, setSelectedStudentProfileId] = useState<string | null>(null);
+  const [isLoadingPoolData, setIsLoadingPoolData] = useState(false);
   const { counts } = useNotificationCounts(counselor.id, counselor.name);
+
+  useEffect(() => {
+    const fetchPoolData = async () => {
+      if (counselor.role === 'pool_management') {
+        setIsLoadingPoolData(true);
+        try {
+          console.log('Fetching pool data for counselor:', counselor.name);
+          const poolData = await getCounselorPoolData(counselor.name);
+          console.log('Pool data received:', poolData);
+          setActiveStudents(poolData.activeStudents as Student[]);
+        } catch (error) {
+          console.error('Error fetching pool data:', error);
+        } finally {
+          setIsLoadingPoolData(false);
+        }
+      }
+    };
+
+    fetchPoolData();
+  }, [counselor.name, counselor.role]);
 
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = [...activeStudents];
@@ -629,27 +651,35 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
 
         {activeTab === 'active' && (
           <div>
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-600">Filter by Composite:</span>
-                <select
-                  value={compositeFilter}
-                  onChange={(e) => setCompositeFilter(e.target.value as CompositeFilter)}
-                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent"
-                >
-                  <option value="all">All Students</option>
-                  <option value="90-100">90-100 (Excellent)</option>
-                  <option value="80-89">80-89 (Strong)</option>
-                  <option value="70-79">70-79 (Competitive)</option>
-                  <option value="below-70">Below 70 (Developing)</option>
-                </select>
+            {isLoadingPoolData ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                <div className="w-12 h-12 border-4 border-[#04ADEE] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">Loading Pool Data</h3>
+                <p className="text-sm text-slate-600">Fetching students from Firebase...</p>
               </div>
-              <span className="text-sm text-slate-500">
-                Showing {filteredAndSortedStudents.length} of {activeStudents.length} students
-              </span>
-            </div>
+            ) : (
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-600">Filter by Composite:</span>
+                    <select
+                      value={compositeFilter}
+                      onChange={(e) => setCompositeFilter(e.target.value as CompositeFilter)}
+                      className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent"
+                    >
+                      <option value="all">All Students</option>
+                      <option value="90-100">90-100 (Excellent)</option>
+                      <option value="80-89">80-89 (Strong)</option>
+                      <option value="70-79">70-79 (Competitive)</option>
+                      <option value="below-70">Below 70 (Developing)</option>
+                    </select>
+                  </div>
+                  <span className="text-sm text-slate-500">
+                    Showing {filteredAndSortedStudents.length} of {activeStudents.length} students
+                  </span>
+                </div>
 
-            {filteredAndSortedStudents.length === 0 ? (
+                {filteredAndSortedStudents.length === 0 ? (
               <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
                 <TrendingUp className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-slate-900 mb-1">No Students Found</h3>
@@ -716,9 +746,9 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-slate-500">Academic Trend</span>
-                        <span className={`text-xs font-bold ${student.academicTrend >= 5 ? 'text-emerald-600' : 'text-slate-900'}`}>
-                          {student.academicTrend > 0 ? '+' : ''}<AnimatedCounter end={student.academicTrend} duration={1500} />%
+                        <span className="text-xs font-medium text-slate-500">Past Overall Average</span>
+                        <span className="text-xs font-bold text-slate-900">
+                          <AnimatedCounter end={student.academicTrend} duration={1500} />%
                         </span>
                       </div>
                     </div>
@@ -747,6 +777,8 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
                   );
                 })}
               </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -872,9 +904,9 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
                   </div>
                 </div>
                 <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="text-xs font-medium text-slate-500 mb-1">Academic Trend</div>
-                  <div className={`text-2xl font-bold ${detailsModalStudent.academicTrend >= 5 ? 'text-emerald-600' : 'text-slate-900'}`}>
-                    {detailsModalStudent.academicTrend > 0 ? '+' : ''}<AnimatedCounter end={detailsModalStudent.academicTrend} duration={1500} />%
+                  <div className="text-xs font-medium text-slate-500 mb-1">Past Overall Average</div>
+                  <div className="text-2xl font-bold text-slate-900">
+                    <AnimatedCounter end={detailsModalStudent.academicTrend} duration={1500} />%
                   </div>
                 </div>
               </div>
