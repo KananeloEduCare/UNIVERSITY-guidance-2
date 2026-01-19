@@ -1,5 +1,6 @@
 import { database } from '../config/firebase';
 import { ref, get } from 'firebase/database';
+import { getPoolWeightings, calculateCompositeScore, getStrengthLabel, PoolWeightings } from './poolWeightingsService';
 
 export interface PoolStudent {
   id: string;
@@ -26,27 +27,13 @@ export interface PoolManagementData {
   progress: number;
 }
 
-const calculateCompositeStrength = (essayScore: number, currentAverage: number, pastAverage: number): number => {
-  const essayWeight = 0.4;
-  const academicWeight = 0.5;
-  const trendWeight = 0.1;
-
-  const trend = currentAverage - pastAverage;
-  const normalizedTrend = Math.min(Math.max(trend, -10), 10) * 5;
-
-  return (essayScore * essayWeight) + (currentAverage * academicWeight) + (normalizedTrend * trendWeight);
-};
-
-const getStrengthLabel = (compositeScore: number): 'Strong' | 'Competitive' | 'Developing' => {
-  if (compositeScore >= 85) return 'Strong';
-  if (compositeScore >= 75) return 'Competitive';
-  return 'Developing';
-};
-
 export const getCounselorPoolData = async (counselorName: string): Promise<PoolManagementData> => {
   try {
     console.log('=== FETCHING COUNSELOR POOL DATA (FIREBASE) ===');
     console.log('Counselor Name:', counselorName);
+
+    const weightings = await getPoolWeightings(counselorName);
+    console.log('Loaded weightings:', weightings);
 
     const caseloadPath = `University Data/Caseloads/${counselorName}`;
     console.log('Firebase Path for Caseload:', caseloadPath);
@@ -126,8 +113,8 @@ export const getCounselorPoolData = async (counselorName: string): Promise<PoolM
       console.log('   Overall Average:', overallAverage);
       console.log('   Past Overall Average:', pastOverallAverage);
 
-      const compositeStrength = calculateCompositeStrength(essayAverage, overallAverage, pastOverallAverage);
-      const strengthLabel = getStrengthLabel(compositeStrength);
+      const compositeStrength = calculateCompositeScore(essayAverage, overallAverage, pastOverallAverage, weightings);
+      const strengthLabel = getStrengthLabel(compositeStrength, weightings);
 
       const student: PoolStudent = {
         id: studentName.replace(/\s+/g, '-').toLowerCase(),

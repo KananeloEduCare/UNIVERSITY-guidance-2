@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { TrendingUp, Award, BookOpen, X, Users, UserCheck, LogOut, ChevronLeft, ChevronRight, GraduationCap, FileText, Calendar, MessageSquare, User } from 'lucide-react';
+import { TrendingUp, Award, BookOpen, X, Users, UserCheck, LogOut, ChevronLeft, ChevronRight, GraduationCap, FileText, Calendar, MessageSquare, User, Settings } from 'lucide-react';
 import CounselorScholarshipsPage from './CounselorScholarshipsPage';
 import CounselorResourcesPage from './CounselorResourcesPage';
 import AssignmentModal from './AssignmentModal';
@@ -14,6 +14,7 @@ import StudentProfileDetails from './StudentProfileDetails';
 import { Counselor } from '../services/counselorAuthService';
 import { useNotificationCounts } from '../hooks/useNotificationCounts';
 import { getCounselorPoolData, PoolStudent } from '../services/poolManagementService';
+import WeightingModal from './WeightingModal';
 
 type TabType = 'academic' | 'active' | 'assigned' | 'essays' | 'scholarships' | 'resources' | 'meetings' | 'inbox' | 'student_profiles';
 type CompositeFilter = 'all' | '90-100' | '80-89' | '70-79' | 'below-70';
@@ -178,27 +179,32 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedStudentProfileId, setSelectedStudentProfileId] = useState<string | null>(null);
   const [isLoadingPoolData, setIsLoadingPoolData] = useState(false);
+  const [showWeightingModal, setShowWeightingModal] = useState(false);
   const { counts } = useNotificationCounts(counselor.id, counselor.name);
 
-  useEffect(() => {
-    const fetchPoolData = async () => {
-      if (counselor.role === 'pool_management') {
-        setIsLoadingPoolData(true);
-        try {
-          console.log('Fetching pool data for counselor:', counselor.name);
-          const poolData = await getCounselorPoolData(counselor.name);
-          console.log('Pool data received:', poolData);
-          setActiveStudents(poolData.activeStudents as Student[]);
-        } catch (error) {
-          console.error('Error fetching pool data:', error);
-        } finally {
-          setIsLoadingPoolData(false);
-        }
+  const fetchPoolData = async () => {
+    if (counselor.role === 'pool_management') {
+      setIsLoadingPoolData(true);
+      try {
+        console.log('Fetching pool data for counselor:', counselor.name);
+        const poolData = await getCounselorPoolData(counselor.name);
+        console.log('Pool data received:', poolData);
+        setActiveStudents(poolData.activeStudents as Student[]);
+      } catch (error) {
+        console.error('Error fetching pool data:', error);
+      } finally {
+        setIsLoadingPoolData(false);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchPoolData();
   }, [counselor.name, counselor.role]);
+
+  const handleWeightingSave = () => {
+    fetchPoolData();
+  };
 
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = [...activeStudents];
@@ -545,9 +551,18 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
                   <TrendingUp className="w-6 h-6 text-[#04ADEE]" />
                   <h1 className="text-2xl font-bold text-slate-900">Pool Management Dashboard</h1>
                 </div>
-                <div className="flex items-center gap-2 bg-emerald-500 px-3 py-1.5 rounded-full">
-                  <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  <span className="text-xs font-semibold text-white">Active</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowWeightingModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:border-[#04ADEE] text-slate-700 hover:text-[#04ADEE] rounded-lg text-sm font-semibold transition-all shadow-sm hover:shadow"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Set Weighting
+                  </button>
+                  <div className="flex items-center gap-2 bg-emerald-500 px-3 py-1.5 rounded-full">
+                    <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                    <span className="text-xs font-semibold text-white">Active</span>
+                  </div>
                 </div>
               </div>
 
@@ -753,20 +768,6 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
                       </div>
                     </div>
 
-                    <div className="border-t border-slate-100 pt-3 mb-4">
-                      <div className="text-xs font-semibold text-slate-600 mb-2">Career Interests</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {student.careerInterests.map((interest, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-200"
-                          >
-                            {interest}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
                     <button
                       onClick={() => setSelectedStudent(student)}
                       className="w-full px-4 py-2.5 bg-[#04ADEE] hover:bg-[#0396d5] text-white text-sm font-semibold rounded-lg transition-all shadow-sm hover:shadow"
@@ -937,6 +938,14 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
             </div>
           </div>
         </div>
+      )}
+
+      {showWeightingModal && (
+        <WeightingModal
+          counselorName={counselor.name}
+          onClose={() => setShowWeightingModal(false)}
+          onSave={handleWeightingSave}
+        />
       )}
     </div>
   );
