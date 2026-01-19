@@ -62,6 +62,7 @@ export const getCounselorPoolData = async (counselorName: string): Promise<PoolM
     console.log('   - Count:', studentNames.length);
 
     const activeStudents: PoolStudent[] = [];
+    let totalAssigned = 0;
 
     for (const studentName of studentNames) {
       console.log(`\n--- Processing Student: ${studentName} ---`);
@@ -81,6 +82,15 @@ export const getCounselorPoolData = async (counselorName: string): Promise<PoolM
       }
 
       const poolData = poolSnapshot.val();
+
+      const isAssigned = poolData['Assigned'] === true;
+      console.log('   Is Assigned:', isAssigned);
+
+      if (isAssigned) {
+        console.log(`   ⏭️ Skipping ${studentName} - Already assigned universities`);
+        totalAssigned++;
+        continue;
+      }
 
       const description = poolData['Description'] || 'No description available';
       const essayAverage = poolData['Essays Average'] || 0;
@@ -151,9 +161,9 @@ export const getCounselorPoolData = async (counselorName: string): Promise<PoolM
     return {
       activeStudents,
       totalActivePool,
-      totalAssigned: 0,
+      totalAssigned,
       averageStrength: Math.round(averageStrength * 10) / 10,
-      progress: 0
+      progress: totalAssigned / (totalActivePool + totalAssigned) * 100
     };
   } catch (error) {
     console.error('❌ ERROR in getCounselorPoolData:', error);

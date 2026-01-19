@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Check, TrendingUp, TrendingDown, Sparkles } from 'lucide-react';
+import { X, Plus, Trash2, Check, Sparkles, Infinity } from 'lucide-react';
 import { PoolStudent, poolStudentsService } from '../services/poolStudentsService';
 
 interface AssignmentModalProps {
@@ -13,8 +13,6 @@ interface University {
   name: string;
   tier: 'reach' | 'mid' | 'safety';
 }
-
-const UNIVERSITY_LIMIT = 5;
 
 const SUGGESTED_UNIVERSITIES = {
   reach: [
@@ -41,6 +39,8 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [universityLimit, setUniversityLimit] = useState<number>(5);
+  const [isUnlimited, setIsUnlimited] = useState(false);
 
   const handleAdd = () => {
     if (!currentName.trim()) {
@@ -48,8 +48,8 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
       return;
     }
 
-    if (universities.length >= UNIVERSITY_LIMIT) {
-      setError(`Maximum ${UNIVERSITY_LIMIT} universities allowed`);
+    if (!isUnlimited && universities.length >= universityLimit) {
+      setError(`Maximum ${universityLimit} universities allowed`);
       return;
     }
 
@@ -69,8 +69,8 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
   };
 
   const handleQuickAdd = (name: string, tier: 'reach' | 'mid' | 'safety') => {
-    if (universities.length >= UNIVERSITY_LIMIT) {
-      setError(`Maximum ${UNIVERSITY_LIMIT} universities allowed`);
+    if (!isUnlimited && universities.length >= universityLimit) {
+      setError(`Maximum ${universityLimit} universities allowed`);
       return;
     }
 
@@ -89,8 +89,8 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
       return;
     }
 
-    if (universities.length !== UNIVERSITY_LIMIT) {
-      setError(`Please assign exactly ${UNIVERSITY_LIMIT} universities`);
+    if (!isUnlimited && universities.length !== universityLimit) {
+      setError(`Please assign exactly ${universityLimit} universities`);
       return;
     }
 
@@ -98,7 +98,7 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
     setError('');
 
     try {
-      await poolStudentsService.assignUniversities(student.id, counselorId, universities);
+      await poolStudentsService.assignUniversities(student.name, universities);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to assign universities');
@@ -138,50 +138,74 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
               <p className="text-lg font-bold text-slate-900">{student.composite_score.toFixed(1)}%</p>
             </div>
             <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-              <p className="text-xs text-blue-600 mb-1">Academic</p>
+              <p className="text-xs text-blue-600 mb-1">Current Average</p>
               <p className="text-lg font-bold text-blue-700">{student.academic_performance.toFixed(1)}%</p>
             </div>
             <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-              <p className="text-xs text-purple-600 mb-1">Essay & Activities</p>
+              <p className="text-xs text-purple-600 mb-1">Essays & Activities</p>
               <p className="text-lg font-bold text-purple-700">{student.essay_activities_rating.toFixed(1)}%</p>
             </div>
-            <div className={`${student.academic_trend >= 0 ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} rounded-lg p-3 border`}>
-              <p className={`text-xs ${student.academic_trend >= 0 ? 'text-green-600' : 'text-orange-600'} mb-1`}>
-                Trend
+            <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+              <p className="text-xs text-amber-600 mb-1">Previous Average</p>
+              <p className="text-lg font-bold text-amber-700">
+                {((student.academic_performance || 0) - (student.academic_trend || 0)).toFixed(1)}%
               </p>
-              <div className="flex items-center gap-1">
-                {student.academic_trend >= 0 ? (
-                  <TrendingUp className="w-4 h-4 text-green-600" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-orange-600" />
-                )}
-                <p className={`text-lg font-bold ${student.academic_trend >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
-                  {student.academic_trend > 0 ? '+' : ''}{student.academic_trend.toFixed(1)}%
-                </p>
-              </div>
             </div>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-6 p-4 bg-[#04ADEE]/10 rounded-lg border border-[#04ADEE]/30">
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-[#04ADEE] mb-2">
+                University Limit
+              </label>
+              <div className="flex gap-3 items-center">
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={universityLimit}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    setUniversityLimit(Math.max(1, Math.min(20, val)));
+                  }}
+                  disabled={isUnlimited}
+                  className="w-24 px-3 py-2 border border-[#04ADEE]/30 rounded-lg focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent disabled:opacity-50 disabled:bg-slate-100"
+                />
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isUnlimited}
+                    onChange={(e) => setIsUnlimited(e.target.checked)}
+                    className="w-4 h-4 text-[#04ADEE] border-[#04ADEE]/30 rounded focus:ring-[#04ADEE]"
+                  />
+                  <span className="text-sm text-[#04ADEE] font-medium flex items-center gap-1">
+                    <Infinity className="w-4 h-4" />
+                    Unlimited
+                  </span>
+                </label>
+              </div>
+            </div>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-[#04ADEE] font-medium">
-                  Assign exactly {UNIVERSITY_LIMIT} universities
+                  {isUnlimited ? 'Add universities (no limit)' : `Assign exactly ${universityLimit} universities`}
                 </p>
                 <p className="text-xs text-[#04ADEE]/80 mt-1">
-                  Progress: {universities.length}/{UNIVERSITY_LIMIT} universities added
+                  Progress: {universities.length}{isUnlimited ? '' : `/${universityLimit}`} universities added
                 </p>
               </div>
-              <div className="flex items-center gap-2 text-xs text-[#04ADEE]">
-                <div className="w-12 h-2 bg-[#04ADEE]/20 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#04ADEE] transition-all"
-                    style={{ width: `${(universities.length / UNIVERSITY_LIMIT) * 100}%` }}
-                  />
+              {!isUnlimited && (
+                <div className="flex items-center gap-2 text-xs text-[#04ADEE]">
+                  <div className="w-12 h-2 bg-[#04ADEE]/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#04ADEE] transition-all"
+                      style={{ width: `${(universities.length / universityLimit) * 100}%` }}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -197,13 +221,13 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
                 onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
                 placeholder="University name"
                 className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent"
-                disabled={universities.length >= UNIVERSITY_LIMIT}
+                disabled={!isUnlimited && universities.length >= universityLimit}
               />
               <select
                 value={currentTier}
                 onChange={(e) => setCurrentTier(e.target.value as any)}
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent bg-white"
-                disabled={universities.length >= UNIVERSITY_LIMIT}
+                disabled={!isUnlimited && universities.length >= universityLimit}
               >
                 <option value="reach">Reach</option>
                 <option value="mid">Mid</option>
@@ -211,7 +235,7 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
               </select>
               <button
                 onClick={handleAdd}
-                disabled={universities.length >= UNIVERSITY_LIMIT}
+                disabled={!isUnlimited && universities.length >= universityLimit}
                 className="px-4 py-2 bg-[#04ADEE] hover:bg-[#0396d5] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
@@ -228,7 +252,7 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
 
           <div className="space-y-2 mb-6">
             <h3 className="text-sm font-medium text-slate-700 mb-3">
-              Selected Universities ({universities.length}/{UNIVERSITY_LIMIT})
+              Selected Universities ({universities.length}{isUnlimited ? '' : `/${universityLimit}`})
             </h3>
             {universities.length === 0 ? (
               <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-lg">
@@ -259,7 +283,7 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
             )}
           </div>
 
-          {universities.length < UNIVERSITY_LIMIT && showSuggestions && (
+          {(isUnlimited || universities.length < universityLimit) && showSuggestions && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -326,7 +350,7 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
             </div>
           )}
 
-          {!showSuggestions && universities.length < UNIVERSITY_LIMIT && (
+          {!showSuggestions && (isUnlimited || universities.length < universityLimit) && (
             <button
               onClick={() => setShowSuggestions(true)}
               className="w-full py-2 text-sm text-[#04ADEE] hover:text-[#0396d5] font-medium"
@@ -346,7 +370,7 @@ export default function AssignmentModal({ student, counselorId, onClose, onCompl
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || universities.length !== UNIVERSITY_LIMIT}
+            disabled={isSubmitting || universities.length === 0 || (!isUnlimited && universities.length !== universityLimit)}
             className="px-6 py-2 bg-[#04ADEE] hover:bg-[#0396d5] text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSubmitting ? (

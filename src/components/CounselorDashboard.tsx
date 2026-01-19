@@ -14,6 +14,7 @@ import StudentProfileDetails from './StudentProfileDetails';
 import { Counselor } from '../services/counselorAuthService';
 import { useNotificationCounts } from '../hooks/useNotificationCounts';
 import { getCounselorPoolData, PoolStudent } from '../services/poolManagementService';
+import { getAssignedStudentsFromFirebase, FirebaseAssignedStudent } from '../services/assignedStudentsService';
 import WeightingModal from './WeightingModal';
 
 type TabType = 'academic' | 'active' | 'assigned' | 'essays' | 'scholarships' | 'resources' | 'meetings' | 'inbox' | 'student_profiles';
@@ -180,6 +181,8 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
   const [selectedStudentProfileId, setSelectedStudentProfileId] = useState<string | null>(null);
   const [isLoadingPoolData, setIsLoadingPoolData] = useState(false);
   const [showWeightingModal, setShowWeightingModal] = useState(false);
+  const [firebaseAssignedStudents, setFirebaseAssignedStudents] = useState<FirebaseAssignedStudent[]>([]);
+  const [isLoadingAssignedStudents, setIsLoadingAssignedStudents] = useState(false);
   const { counts } = useNotificationCounts(counselor.id, counselor.name);
 
   const fetchPoolData = async () => {
@@ -198,8 +201,25 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
     }
   };
 
+  const fetchAssignedStudents = async () => {
+    if (counselor.role === 'pool_management') {
+      setIsLoadingAssignedStudents(true);
+      try {
+        console.log('Fetching assigned students for counselor:', counselor.name);
+        const assigned = await getAssignedStudentsFromFirebase(counselor.name);
+        console.log('Assigned students received:', assigned);
+        setFirebaseAssignedStudents(assigned);
+      } catch (error) {
+        console.error('Error fetching assigned students:', error);
+      } finally {
+        setIsLoadingAssignedStudents(false);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchPoolData();
+    fetchAssignedStudents();
   }, [counselor.name, counselor.role]);
 
   const handleWeightingSave = () => {
@@ -235,10 +255,9 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
   const totalOriginal = DUMMY_STUDENTS.length + DUMMY_ASSIGNED_STUDENTS.length;
 
   const handleAssignmentComplete = () => {
-    if (selectedStudent) {
-      setActiveStudents(activeStudents.filter(s => s.id !== selectedStudent.id));
-    }
     setSelectedStudent(null);
+    fetchPoolData();
+    fetchAssignedStudents();
   };
 
   if (viewingStudentId) {
@@ -786,50 +805,55 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
 
         {activeTab === 'assigned' && (
           <div className="space-y-3">
-            {assignedStudents.length === 0 ? (
+            {isLoadingAssignedStudents ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                <div className="w-12 h-12 border-4 border-[#04ADEE] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p className="text-slate-600">Loading assigned students...</p>
+              </div>
+            ) : firebaseAssignedStudents.length === 0 ? (
               <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
                 <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-slate-900 mb-1">No Assigned Students Yet</h3>
                 <p className="text-sm text-slate-600">Students will appear here once universities are assigned.</p>
               </div>
             ) : (
-              assignedStudents.map((student) => (
+              firebaseAssignedStudents.map((student) => (
                 <div
                   key={student.id}
-                  className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => setViewingStudentId(student.id)}
+                  className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h3 className="text-base font-bold text-slate-900 mb-1">{student.name}</h3>
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        student.strengthLabel === 'Strong'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : student.strengthLabel === 'Competitive'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {student.strengthLabel}
-                      </span>
+                      <p className="text-xs text-slate-600">{student.email}</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs text-slate-500">Composite</div>
-                      <div className="text-xl font-bold text-slate-900">
-                        <AnimatedCounter end={student.compositeStrength} duration={1500} decimals={1} />
+                      <div className="text-xs text-slate-500">Total Universities</div>
+                      <div className="text-xl font-bold text-[#04ADEE]">
+                        {student.assignedCount}
                       </div>
                     </div>
                   </div>
 
                   <div className="border-t border-slate-100 pt-3">
-                    <div className="text-xs font-semibold text-slate-600 mb-2">Assigned Universities ({student.universities.length})</div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="text-xs font-semibold text-slate-600 mb-2">Assigned Universities</div>
+                    <div className="space-y-1.5">
                       {student.universities.map((uni, idx) => (
-                        <span
+                        <div
                           key={idx}
-                          className="px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg text-xs font-medium border border-slate-200"
+                          className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-200"
                         >
-                          {uni}
-                        </span>
+                          <span className="text-sm font-medium text-slate-900">{uni.name}</span>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            uni.tier === 'Reach'
+                              ? 'bg-red-100 text-red-700 border border-red-200'
+                              : uni.tier === 'Mid'
+                              ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                              : 'bg-green-100 text-green-700 border border-green-200'
+                          }`}>
+                            {uni.tier}
+                          </span>
+                        </div>
                       ))}
                     </div>
                   </div>

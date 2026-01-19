@@ -1,4 +1,6 @@
 import { supabase } from '../config/supabase';
+import { database } from '../config/firebase';
+import { ref, get } from 'firebase/database';
 
 export interface UniversityAssignment {
   id: string;
@@ -146,4 +148,96 @@ export const removeUniversityAssignment = async (
   }
 
   return true;
+};
+
+export interface FirebaseUniversityAssignment {
+  name: string;
+  tier: 'Reach' | 'Mid' | 'Safety';
+}
+
+export interface FirebaseAssignedStudent {
+  id: string;
+  name: string;
+  email: string;
+  universities: FirebaseUniversityAssignment[];
+  assignedCount: number;
+}
+
+export const getAssignedStudentsFromFirebase = async (counselorName: string): Promise<FirebaseAssignedStudent[]> => {
+  try {
+    console.log('=== FETCHING ASSIGNED STUDENTS (FIREBASE) ===');
+    console.log('Counselor Name:', counselorName);
+
+    const caseloadPath = `University Data/Caseloads/${counselorName}`;
+    console.log('Firebase Path for Caseload:', caseloadPath);
+
+    const caseloadRef = ref(database, caseloadPath);
+    const caseloadSnapshot = await get(caseloadRef);
+
+    console.log('Caseload Exists:', caseloadSnapshot.exists());
+    console.log('Raw Caseload Data:', caseloadSnapshot.val());
+
+    if (!caseloadSnapshot.exists()) {
+      console.log('❌ No caseload found for counselor:', counselorName);
+      return [];
+    }
+
+    const caseloadData = caseloadSnapshot.val();
+    const studentNames = Object.keys(caseloadData);
+    console.log('Student Names in Caseload:', studentNames);
+    console.log('Count:', studentNames.length);
+
+    const assignedStudents: FirebaseAssignedStudent[] = [];
+
+    for (const studentName of studentNames) {
+      console.log(`\n--- Checking Student: ${studentName} ---`);
+
+      const assignedStudentsPath = `University Data/Assigned Students/${studentName}/Universities`;
+      console.log('   Assigned Students Path:', assignedStudentsPath);
+
+      const assignedRef = ref(database, assignedStudentsPath);
+      const assignedSnapshot = await get(assignedRef);
+
+      console.log('   Assigned Snapshot Exists:', assignedSnapshot.exists());
+      console.log('   Raw Universities Data:', assignedSnapshot.val());
+
+      if (!assignedSnapshot.exists()) {
+        console.log(`   ⏭️ No assigned universities for: ${studentName}`);
+        continue;
+      }
+
+      const universitiesData = assignedSnapshot.val();
+      const universities: FirebaseUniversityAssignment[] = [];
+
+      for (const [universityName, tier] of Object.entries(universitiesData)) {
+        universities.push({
+          name: universityName,
+          tier: tier as 'Reach' | 'Mid' | 'Safety'
+        });
+      }
+
+      console.log('   Universities:', universities);
+
+      const assignedStudent: FirebaseAssignedStudent = {
+        id: studentName.replace(/\s+/g, '-').toLowerCase(),
+        name: studentName,
+        email: `${studentName.replace(/\s+/g, '.').toLowerCase()}@example.com`,
+        universities,
+        assignedCount: universities.length
+      };
+
+      console.log('   ✅ Added Assigned Student:', assignedStudent);
+      assignedStudents.push(assignedStudent);
+    }
+
+    console.log('\n=== ASSIGNED STUDENTS SUMMARY ===');
+    console.log('Total Assigned Students:', assignedStudents.length);
+    console.log('Students:', assignedStudents);
+    console.log('=== END FETCH ===\n');
+
+    return assignedStudents;
+  } catch (error) {
+    console.error('❌ ERROR in getAssignedStudentsFromFirebase:', error);
+    throw error;
+  }
 };

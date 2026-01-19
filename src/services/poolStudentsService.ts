@@ -1,4 +1,6 @@
 import { supabase } from '../config/supabase';
+import { database } from '../config/firebase';
+import { ref, set, update } from 'firebase/database';
 
 export interface PoolStudent {
   id: string;
@@ -60,29 +62,41 @@ export const poolStudentsService = {
   },
 
   assignUniversities: async (
-    studentId: string,
-    counselorId: string,
+    studentName: string,
     universities: Array<{ name: string; tier: 'reach' | 'mid' | 'safety' }>
   ): Promise<void> => {
-    const assignments = universities.map(uni => ({
-      student_id: studentId,
-      counselor_id: counselorId,
-      university_name: uni.name,
-      university_tier: uni.tier,
-    }));
+    try {
+      console.log('=== ASSIGNING UNIVERSITIES (FIREBASE) ===');
+      console.log('Student Name:', studentName);
+      console.log('Universities:', universities);
 
-    const { error: assignError } = await supabase
-      .from('university_assignments')
-      .insert(assignments);
+      const universitiesData: { [key: string]: string } = {};
+      universities.forEach(uni => {
+        const tierLabel = uni.tier.charAt(0).toUpperCase() + uni.tier.slice(1);
+        universitiesData[uni.name] = tierLabel;
+      });
 
-    if (assignError) throw assignError;
+      const assignedStudentsPath = `University Data/Assigned Students/${studentName}/Universities`;
+      console.log('Firebase Path for Assignments:', assignedStudentsPath);
+      console.log('Data to save:', universitiesData);
 
-    const { error: updateError } = await supabase
-      .from('pool_students')
-      .update({ status: 'assigned', updated_at: new Date().toISOString() })
-      .eq('id', studentId);
+      const assignedStudentsRef = ref(database, assignedStudentsPath);
+      await set(assignedStudentsRef, universitiesData);
 
-    if (updateError) throw updateError;
+      const poolManagementPath = `University Data/Pool management/${studentName}`;
+      console.log('Firebase Path for Pool Management:', poolManagementPath);
+
+      const poolManagementRef = ref(database, poolManagementPath);
+      await update(poolManagementRef, {
+        Assigned: true
+      });
+
+      console.log('✅ Universities assigned successfully');
+      console.log('=== END ASSIGNMENT ===\n');
+    } catch (error) {
+      console.error('❌ ERROR in assignUniversities:', error);
+      throw error;
+    }
   },
 
   getStudentAssignments: async (studentId: string): Promise<UniversityAssignment[]> => {
