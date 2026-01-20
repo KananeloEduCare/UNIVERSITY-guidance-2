@@ -161,6 +161,7 @@ export interface FirebaseAssignedStudent {
   email: string;
   universities: FirebaseUniversityAssignment[];
   assignedCount: number;
+  compositeScore: number;
 }
 
 export const getAssignedStudentsFromFirebase = async (counselorName: string): Promise<FirebaseAssignedStudent[]> => {
@@ -218,12 +219,22 @@ export const getAssignedStudentsFromFirebase = async (counselorName: string): Pr
 
       console.log('   Universities:', universities);
 
+      const poolStrengthPath = `University Data/Pool Strength/${studentName}`;
+      console.log('   Pool Strength Path:', poolStrengthPath);
+
+      const poolStrengthRef = ref(database, poolStrengthPath);
+      const poolStrengthSnapshot = await get(poolStrengthRef);
+
+      const compositeScore = poolStrengthSnapshot.exists() ? poolStrengthSnapshot.val() : 0;
+      console.log('   Composite Score:', compositeScore);
+
       const assignedStudent: FirebaseAssignedStudent = {
         id: studentName.replace(/\s+/g, '-').toLowerCase(),
         name: studentName,
         email: `${studentName.replace(/\s+/g, '.').toLowerCase()}@example.com`,
         universities,
-        assignedCount: universities.length
+        assignedCount: universities.length,
+        compositeScore
       };
 
       console.log('   ✅ Added Assigned Student:', assignedStudent);

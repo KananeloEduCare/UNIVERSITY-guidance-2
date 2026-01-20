@@ -183,6 +183,12 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
   const [showWeightingModal, setShowWeightingModal] = useState(false);
   const [firebaseAssignedStudents, setFirebaseAssignedStudents] = useState<FirebaseAssignedStudent[]>([]);
   const [isLoadingAssignedStudents, setIsLoadingAssignedStudents] = useState(false);
+  const [poolManagementData, setPoolManagementData] = useState<{
+    totalCaseload: number;
+    totalAssigned: number;
+    averageStrength: number;
+    progress: number;
+  } | null>(null);
   const { counts } = useNotificationCounts(counselor.id, counselor.name);
 
   const fetchPoolData = async () => {
@@ -193,6 +199,12 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
         const poolData = await getCounselorPoolData(counselor.name);
         console.log('Pool data received:', poolData);
         setActiveStudents(poolData.activeStudents as Student[]);
+        setPoolManagementData({
+          totalCaseload: poolData.totalCaseload,
+          totalAssigned: poolData.totalAssigned,
+          averageStrength: poolData.averageStrength,
+          progress: poolData.progress
+        });
       } catch (error) {
         console.error('Error fetching pool data:', error);
       } finally {
@@ -250,9 +262,9 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
     return filtered.sort((a, b) => b.compositeStrength - a.compositeStrength);
   }, [activeStudents, compositeFilter]);
 
-  const avgStrength = filteredAndSortedStudents.reduce((acc, s) => acc + s.compositeStrength, 0) / (filteredAndSortedStudents.length || 1);
-  const totalAssigned = assignedStudents.length;
-  const totalOriginal = DUMMY_STUDENTS.length + DUMMY_ASSIGNED_STUDENTS.length;
+  const avgStrength = poolManagementData?.averageStrength || 0;
+  const totalAssigned = poolManagementData?.totalAssigned || 0;
+  const totalOriginal = poolManagementData?.totalCaseload || 0;
 
   const handleAssignmentComplete = () => {
     setSelectedStudent(null);
@@ -716,8 +728,16 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
                 {filteredAndSortedStudents.length === 0 ? (
               <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
                 <TrendingUp className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-                <h3 className="text-lg font-bold text-slate-900 mb-1">No Students Found</h3>
-                <p className="text-sm text-slate-600">Try adjusting your filter to see more students.</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">
+                  {activeStudents.length === 0 && totalAssigned === totalOriginal && totalOriginal > 0
+                    ? 'All students in your caseload have been assigned universities'
+                    : 'No Students Found'}
+                </h3>
+                <p className="text-sm text-slate-600">
+                  {activeStudents.length === 0 && totalAssigned === totalOriginal && totalOriginal > 0
+                    ? 'Great work! Check the "Assigned Students" tab to view all assignments.'
+                    : 'Try adjusting your filter to see more students.'}
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -817,48 +837,63 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
                 <p className="text-sm text-slate-600">Students will appear here once universities are assigned.</p>
               </div>
             ) : (
-              firebaseAssignedStudents.map((student) => (
-                <div
-                  key={student.id}
-                  className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900 mb-1">{student.name}</h3>
-                      <p className="text-xs text-slate-600">{student.email}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-slate-500">Total Universities</div>
-                      <div className="text-xl font-bold text-[#04ADEE]">
-                        {student.assignedCount}
+              firebaseAssignedStudents.map((student) => {
+                const [showUniversities, setShowUniversities] = React.useState(false);
+
+                return (
+                  <div
+                    key={student.id}
+                    className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900 mb-1">{student.name}</h3>
+                        <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                          {student.assignedCount} {student.assignedCount === 1 ? 'University' : 'Universities'}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-slate-500">Composite</div>
+                        <div className="text-xl font-bold text-[#04ADEE]">
+                          <AnimatedCounter end={student.compositeScore} duration={1500} decimals={1} />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="border-t border-slate-100 pt-3">
-                    <div className="text-xs font-semibold text-slate-600 mb-2">Assigned Universities</div>
-                    <div className="space-y-1.5">
-                      {student.universities.map((uni, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-200"
-                        >
-                          <span className="text-sm font-medium text-slate-900">{uni.name}</span>
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            uni.tier === 'Reach'
-                              ? 'bg-red-100 text-red-700 border border-red-200'
-                              : uni.tier === 'Mid'
-                              ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                              : 'bg-green-100 text-green-700 border border-green-200'
-                          }`}>
-                            {uni.tier}
-                          </span>
+                    <button
+                      onClick={() => setShowUniversities(!showUniversities)}
+                      className="w-full py-2 px-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors flex items-center justify-between"
+                    >
+                      <span>{showUniversities ? 'Hide' : 'Show'} Universities</span>
+                      <span className={`transform transition-transform ${showUniversities ? 'rotate-180' : ''}`}>▼</span>
+                    </button>
+
+                    {showUniversities && (
+                      <div className="border-t border-slate-100 pt-3 mt-3">
+                        <div className="space-y-1.5">
+                          {student.universities.map((uni, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-200"
+                            >
+                              <span className="text-sm font-medium text-slate-900">{uni.name}</span>
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                uni.tier === 'Reach'
+                                  ? 'bg-red-100 text-red-700 border border-red-200'
+                                  : uni.tier === 'Mid'
+                                  ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                                  : 'bg-green-100 text-green-700 border border-green-200'
+                              }`}>
+                                {uni.tier}
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

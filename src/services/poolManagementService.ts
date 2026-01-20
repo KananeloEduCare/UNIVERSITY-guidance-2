@@ -1,5 +1,5 @@
 import { database } from '../config/firebase';
-import { ref, get } from 'firebase/database';
+import { ref, get, set } from 'firebase/database';
 import { getPoolWeightings, calculateCompositeScore, getStrengthLabel, PoolWeightings } from './poolWeightingsService';
 
 export interface PoolStudent {
@@ -23,6 +23,7 @@ export interface PoolManagementData {
   activeStudents: PoolStudent[];
   totalActivePool: number;
   totalAssigned: number;
+  totalCaseload: number;
   averageStrength: number;
   progress: number;
 }
@@ -51,6 +52,7 @@ export const getCounselorPoolData = async (counselorName: string): Promise<PoolM
         activeStudents: [],
         totalActivePool: 0,
         totalAssigned: 0,
+        totalCaseload: 0,
         averageStrength: 0,
         progress: 0
       };
@@ -62,6 +64,7 @@ export const getCounselorPoolData = async (counselorName: string): Promise<PoolM
     console.log('   - Count:', studentNames.length);
 
     const activeStudents: PoolStudent[] = [];
+    const allCompositeScores: number[] = [];
     let totalAssigned = 0;
 
     for (const studentName of studentNames) {
@@ -82,15 +85,6 @@ export const getCounselorPoolData = async (counselorName: string): Promise<PoolM
       }
 
       const poolData = poolSnapshot.val();
-
-      const isAssigned = poolData['Assigned'] === true;
-      console.log('   Is Assigned:', isAssigned);
-
-      if (isAssigned) {
-        console.log(`   ⏭️ Skipping ${studentName} - Already assigned universities`);
-        totalAssigned++;
-        continue;
-      }
 
       const description = poolData['Description'] || 'No description available';
       const essayAverage = poolData['Essays Average'] || 0;
@@ -125,6 +119,25 @@ export const getCounselorPoolData = async (counselorName: string): Promise<PoolM
 
       const compositeStrength = calculateCompositeScore(essayAverage, overallAverage, pastOverallAverage, weightings);
       const strengthLabel = getStrengthLabel(compositeStrength, weightings);
+      const roundedComposite = Math.round(compositeStrength * 10) / 10;
+
+      console.log('   Composite Strength:', roundedComposite);
+
+      allCompositeScores.push(roundedComposite);
+
+      const poolStrengthPath = `University Data/Pool Strength/${studentName}`;
+      const poolStrengthRef = ref(database, poolStrengthPath);
+      await set(poolStrengthRef, roundedComposite);
+      console.log('   ✅ Saved to Pool Strength:', poolStrengthPath, '=', roundedComposite);
+
+      const isAssigned = poolData['Assigned'] === true;
+      console.log('   Is Assigned:', isAssigned);
+
+      if (isAssigned) {
+        console.log(`   ⏭️ Skipping ${studentName} for active pool - Already assigned universities`);
+        totalAssigned++;
+        continue;
+      }
 
       const student: PoolStudent = {
         id: studentName.replace(/\s+/g, '-').toLowerCase(),
@@ -135,35 +148,40 @@ export const getCounselorPoolData = async (counselorName: string): Promise<PoolM
         essayActivities: essayAverage,
         academicPerformance: overallAverage,
         academicTrend: pastOverallAverage,
-        compositeStrength: Math.round(compositeStrength * 10) / 10,
+        compositeStrength: roundedComposite,
         strengthLabel,
-        composite_score: Math.round(compositeStrength * 10) / 10,
+        composite_score: roundedComposite,
         academic_performance: overallAverage,
         essay_activities_rating: essayAverage,
         academic_trend: pastOverallAverage
       };
 
-      console.log('   ✅ Added Student:', student);
+      console.log('   ✅ Added to Active Pool:', student);
       activeStudents.push(student);
     }
 
     const totalActivePool = activeStudents.length;
-    const averageStrength = totalActivePool > 0
-      ? activeStudents.reduce((sum, student) => sum + student.compositeStrength, 0) / totalActivePool
+    const totalCaseload = studentNames.length;
+    const averageStrength = allCompositeScores.length > 0
+      ? allCompositeScores.reduce((sum, score) => sum + score, 0) / allCompositeScores.length
       : 0;
 
     console.log('\n=== FINAL POOL SUMMARY ===');
+    console.log('Total Caseload:', totalCaseload);
     console.log('Total Active Pool:', totalActivePool);
-    console.log('Average Strength:', Math.round(averageStrength * 10) / 10);
-    console.log('Students:', activeStudents);
+    console.log('Total Assigned:', totalAssigned);
+    console.log('All Composite Scores:', allCompositeScores);
+    console.log('Average Strength (All Students):', Math.round(averageStrength * 10) / 10);
+    console.log('Progress:', `${totalAssigned}/${totalCaseload}`);
     console.log('=== END FETCH ===\n');
 
     return {
       activeStudents,
       totalActivePool,
       totalAssigned,
+      totalCaseload,
       averageStrength: Math.round(averageStrength * 10) / 10,
-      progress: totalAssigned / (totalActivePool + totalAssigned) * 100
+      progress: totalCaseload > 0 ? (totalAssigned / totalCaseload) * 100 : 0
     };
   } catch (error) {
     console.error('❌ ERROR in getCounselorPoolData:', error);
