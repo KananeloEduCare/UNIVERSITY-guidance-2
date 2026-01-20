@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { TrendingUp, Award, BookOpen, X, Users, UserCheck, LogOut, ChevronLeft, ChevronRight, GraduationCap, FileText, Calendar, MessageSquare, User, Settings } from 'lucide-react';
+import { TrendingUp, Award, BookOpen, X, Users, UserCheck, LogOut, ChevronLeft, ChevronRight, GraduationCap, FileText, Calendar, MessageSquare, User, Settings, Search } from 'lucide-react';
 import CounselorScholarshipsPage from './CounselorScholarshipsPage';
 import CounselorResourcesPage from './CounselorResourcesPage';
 import AssignmentModal from './AssignmentModal';
@@ -184,6 +184,7 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
   const [firebaseAssignedStudents, setFirebaseAssignedStudents] = useState<FirebaseAssignedStudent[]>([]);
   const [isLoadingAssignedStudents, setIsLoadingAssignedStudents] = useState(false);
   const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
+  const [assignedStudentsSearch, setAssignedStudentsSearch] = useState('');
   const [poolManagementData, setPoolManagementData] = useState<{
     totalCaseload: number;
     totalAssigned: number;
@@ -284,6 +285,18 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
       return newSet;
     });
   };
+
+  const filteredAssignedStudents = firebaseAssignedStudents.filter(student => {
+    if (!assignedStudentsSearch.trim()) return true;
+
+    const searchLower = assignedStudentsSearch.toLowerCase();
+    const studentNameMatch = student.name.toLowerCase().includes(searchLower);
+    const universityMatch = student.universities.some(uni =>
+      uni.name.toLowerCase().includes(searchLower)
+    );
+
+    return studentNameMatch || universityMatch;
+  });
 
   if (viewingStudentId) {
     return (
@@ -838,19 +851,37 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
 
         {activeTab === 'assigned' && (
           <div className="space-y-3">
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search by student or university name..."
+                  value={assignedStudentsSearch}
+                  onChange={(e) => setAssignedStudentsSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent outline-none"
+                />
+              </div>
+            </div>
             {isLoadingAssignedStudents ? (
               <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
                 <div className="w-12 h-12 border-4 border-[#04ADEE] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
                 <p className="text-slate-600">Loading assigned students...</p>
               </div>
-            ) : firebaseAssignedStudents.length === 0 ? (
+            ) : filteredAssignedStudents.length === 0 ? (
               <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
                 <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                <h3 className="text-lg font-bold text-slate-900 mb-1">No Assigned Students Yet</h3>
-                <p className="text-sm text-slate-600">Students will appear here once universities are assigned.</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">
+                  {assignedStudentsSearch.trim() ? 'No Matching Students' : 'No Assigned Students Yet'}
+                </h3>
+                <p className="text-sm text-slate-600">
+                  {assignedStudentsSearch.trim()
+                    ? 'Try a different search term.'
+                    : 'Students will appear here once universities are assigned.'}
+                </p>
               </div>
             ) : (
-              firebaseAssignedStudents.map((student) => {
+              filteredAssignedStudents.map((student) => {
                 const isExpanded = expandedStudents.has(student.id);
 
                 return (
