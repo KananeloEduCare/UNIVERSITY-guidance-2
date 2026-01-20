@@ -183,6 +183,7 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
   const [showWeightingModal, setShowWeightingModal] = useState(false);
   const [firebaseAssignedStudents, setFirebaseAssignedStudents] = useState<FirebaseAssignedStudent[]>([]);
   const [isLoadingAssignedStudents, setIsLoadingAssignedStudents] = useState(false);
+  const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
   const [poolManagementData, setPoolManagementData] = useState<{
     totalCaseload: number;
     totalAssigned: number;
@@ -270,6 +271,18 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
     setSelectedStudent(null);
     fetchPoolData();
     fetchAssignedStudents();
+  };
+
+  const toggleStudentExpanded = (studentId: string) => {
+    setExpandedStudents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(studentId)) {
+        newSet.delete(studentId);
+      } else {
+        newSet.add(studentId);
+      }
+      return newSet;
+    });
   };
 
   if (viewingStudentId) {
@@ -838,7 +851,7 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
               </div>
             ) : (
               firebaseAssignedStudents.map((student) => {
-                const [showUniversities, setShowUniversities] = React.useState(false);
+                const isExpanded = expandedStudents.has(student.id);
 
                 return (
                   <div
@@ -861,14 +874,14 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
                     </div>
 
                     <button
-                      onClick={() => setShowUniversities(!showUniversities)}
+                      onClick={() => toggleStudentExpanded(student.id)}
                       className="w-full py-2 px-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors flex items-center justify-between"
                     >
-                      <span>{showUniversities ? 'Hide' : 'Show'} Universities</span>
-                      <span className={`transform transition-transform ${showUniversities ? 'rotate-180' : ''}`}>▼</span>
+                      <span>{isExpanded ? 'Hide' : 'Show'} Universities</span>
+                      <span className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
                     </button>
 
-                    {showUniversities && (
+                    {isExpanded && (
                       <div className="border-t border-slate-100 pt-3 mt-3">
                         <div className="space-y-1.5">
                           {student.universities.map((uni, idx) => (
