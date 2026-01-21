@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, TrendingUp, ArrowLeft, GraduationCap, Users, Search, Trophy, Medal, ChevronDown, ChevronUp, FileText, Target, Award, AlertCircle, Star } from 'lucide-react';
+import { BookOpen, TrendingUp, ArrowLeft, GraduationCap, Users, Search, Trophy, Medal, ChevronDown, ChevronUp, FileText, Target, Award, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import AnimatedCounter from './AnimatedCounter';
 import CircularProgress from './CircularProgress';
@@ -186,20 +186,6 @@ const AcademicTracking: React.FC = () => {
   }
 
   if (viewingEssayFromProfile && viewingEssay) {
-    const cleanHtmlContent = (html: string): string => {
-      const div = document.createElement('div');
-      div.innerHTML = html;
-      const allElements = div.querySelectorAll('*');
-      allElements.forEach(el => {
-        Array.from(el.attributes).forEach(attr => {
-          if (attr.name.startsWith('data-')) {
-            el.removeAttribute(attr.name);
-          }
-        });
-      });
-      return div.innerHTML;
-    };
-
     return (
       <div className="-mx-8 -my-6">
         <div className="bg-gradient-to-r from-[#04ADEE]/10 via-emerald-50 to-[#04ADEE]/10 border-b border-[#04ADEE]/20 px-8 py-5">
@@ -210,20 +196,10 @@ const AcademicTracking: React.FC = () => {
             <ArrowLeft className="w-4 h-4" />
             Back to {selectedStudent?.studentName}
           </button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">{viewingEssay.title}</h2>
-              {viewingEssay.universityName && (
-                <p className="text-sm text-slate-600 mt-1">{viewingEssay.universityName}</p>
-              )}
-            </div>
-            {viewingEssay.reviewed && viewingEssay.reviewData?.rubricFeedback && (
-              <button className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition-colors font-medium text-sm">
-                <Star className="w-4 h-4" />
-                View Feedback
-              </button>
-            )}
-          </div>
+          <h2 className="text-2xl font-bold text-slate-900">{viewingEssay.title}</h2>
+          {viewingEssay.universityName && (
+            <p className="text-sm text-slate-600 mt-1">{viewingEssay.universityName}</p>
+          )}
           <div className="flex items-center gap-2 mt-3">
             {viewingEssay.reviewed ? (
               <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold">
@@ -239,77 +215,18 @@ const AcademicTracking: React.FC = () => {
         </div>
 
         <div className="px-8 py-6">
-          <div className={viewingEssay.reviewed && viewingEssay.reviewData?.rubricFeedback ? 'grid grid-cols-[60%_40%] gap-6 max-w-7xl mx-auto items-start' : ''}>
-            <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-              <div
-                className="prose prose-sm max-w-none text-slate-700 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: cleanHtmlContent(viewingEssay.text) }}
-              />
-            </div>
-
-            {viewingEssay.reviewed && viewingEssay.reviewData?.rubricFeedback && (
-              <div className="sticky top-6 bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm flex flex-col max-h-[calc(100vh-12rem)] self-start">
-                <div className="p-5 border-b border-emerald-200 bg-gradient-to-br from-emerald-50 to-blue-50 flex-shrink-0">
-                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <Star className="w-5 h-5 text-emerald-600" />
-                    Rubric Feedback
-                  </h3>
-                </div>
-
-                <div className="overflow-y-auto flex-1 p-5 min-h-0">
-                  <div className="space-y-3">
-                    {viewingEssay.reviewData.rubricFeedback.map((feedback: any, index: number) => (
-                      <div
-                        key={index}
-                        className="bg-white border border-emerald-200 rounded-lg p-4 shadow-sm"
-                      >
-                        <div className="flex items-start gap-2.5 mb-2.5">
-                          <span className="inline-flex items-center justify-center w-6 h-6 bg-[#04ADEE] text-white text-xs font-bold rounded-full flex-shrink-0">
-                            {index + 1}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-bold text-slate-900">{feedback.criterionName}</h4>
-                            <p className="text-xs text-slate-600 mt-0.5">{feedback.criterionDescription}</p>
-                          </div>
-                          <div className="flex items-center gap-1 bg-emerald-100 px-1.5 py-0.5 rounded flex-shrink-0">
-                            <Star className="w-3.5 h-3.5 text-emerald-700 fill-emerald-700" />
-                            <span className="text-xs font-bold text-emerald-700">{feedback.rating}/5</span>
-                          </div>
-                        </div>
-
-                        {feedback.rating === 5 ? (
-                          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
-                            <p className="text-xs font-semibold text-emerald-800">Perfect Score!</p>
-                            <p className="text-xs text-emerald-700 leading-relaxed">This criterion has been excellently fulfilled.</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
-                              <p className="text-xs font-semibold text-red-800 mb-0.5">What's Missing:</p>
-                              <p className="text-xs text-red-700 leading-relaxed">{feedback.whatsMissing}</p>
-                            </div>
-
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
-                              <p className="text-xs font-semibold text-blue-800 mb-0.5">How to Improve:</p>
-                              <p className="text-xs text-blue-700 leading-relaxed">{feedback.howToImprove}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+            <div
+              className="prose prose-sm max-w-none text-slate-700 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: viewingEssay.text }}
+            />
           </div>
 
-          {!viewingEssay.reviewed && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-700 mb-2">
-                This essay has not been reviewed yet. To grade and provide feedback, open it from the Essay Review tab in your dashboard.
-              </p>
-            </div>
-          )}
+          <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <p className="text-sm text-slate-600 mb-2">
+              To add feedback or grade this essay, open it from the Essay Review tab in your dashboard.
+            </p>
+          </div>
         </div>
       </div>
     );

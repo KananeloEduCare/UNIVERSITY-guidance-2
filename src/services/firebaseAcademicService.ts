@@ -26,39 +26,6 @@ export interface ActivityItem {
   description: string;
 }
 
-export interface InlineComment {
-  id: string;
-  counselor_name: string;
-  highlighted_text: string;
-  start_position: number;
-  end_position: number;
-  comment_text: string;
-  created_at?: string;
-}
-
-export interface GeneralComment {
-  id: string;
-  counselor_name: string;
-  comment_text: string;
-  created_at: string;
-}
-
-export interface ReviewData {
-  reviewedBy: string;
-  reviewedAt: string;
-  totalPoints: number;
-  score: number;
-  inlineComments: InlineComment[];
-  generalComments: GeneralComment[];
-  rubricFeedback?: Array<{
-    criterionName: string;
-    criterionDescription: string;
-    rating: number;
-    whatsMissing: string;
-    howToImprove: string;
-  }>;
-}
-
 export interface Essay {
   title: string;
   text: string;
@@ -66,7 +33,6 @@ export interface Essay {
   reviewed: boolean;
   universityName?: string;
   type: string;
-  reviewData?: ReviewData;
 }
 
 export interface StudentProfileData {
@@ -330,8 +296,7 @@ export const getStudentProfileData = async (studentName: string): Promise<Studen
             text: essay.essayText || '',
             createdAt: essay.createdAt || '',
             reviewed: !!essay.reviewData,
-            type: 'personal_statement',
-            reviewData: essay.reviewData
+            type: 'personal_statement'
           });
         } else if (essayType === 'supplement') {
           supplementaryEssays.push({
@@ -340,8 +305,7 @@ export const getStudentProfileData = async (studentName: string): Promise<Studen
             createdAt: essay.createdAt || '',
             reviewed: !!essay.reviewData,
             universityName: essay.universityName,
-            type: 'supplement',
-            reviewData: essay.reviewData
+            type: 'supplement'
           });
         } else if (essay.activities) {
           if (!activitiesEssay || essay.createdAt > activitiesEssay.createdAt) {
