@@ -20,6 +20,33 @@ export interface StudentAcademicData {
   previousAverages: PreviousYearData[];
 }
 
+export interface ActivityItem {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface Essay {
+  title: string;
+  text: string;
+  createdAt: string;
+  reviewed: boolean;
+  universityName?: string;
+  type: string;
+}
+
+export interface StudentProfileData {
+  sat?: number;
+  act?: number;
+  dob?: string;
+  nationality?: string;
+  personalStatement?: Essay;
+  activitiesList?: ActivityItem[];
+  supplementaryEssays?: Essay[];
+  careerInterests?: string[];
+  specialCircumstances?: string;
+}
+
 export interface AcademicSummary {
   totalStudents: number;
   averageGrade: number;
@@ -215,5 +242,107 @@ export const getStudentAcademicDetails = async (studentName: string): Promise<St
   } catch (error) {
     console.error('Error fetching student academic details:', error);
     throw error;
+  }
+};
+
+export const getStudentProfileData = async (studentName: string): Promise<StudentProfileData> => {
+  try {
+    console.log(`🔍 Fetching profile data for: ${studentName}`);
+
+    const academicsRef = ref(database, `University Data/Student Academics/${studentName}`);
+    const profileRef = ref(database, `University Data/Student Profiles/${studentName}`);
+    const essaysRef = ref(database, `University Data/Essays/${studentName}`);
+
+    const [academicsSnap, profileSnap, essaysSnap] = await Promise.all([
+      get(academicsRef),
+      get(profileRef),
+      get(essaysRef)
+    ]);
+
+    const profileData: StudentProfileData = {};
+
+    if (academicsSnap.exists()) {
+      const academicsData = academicsSnap.val();
+      profileData.sat = academicsData.SAT;
+      profileData.act = academicsData.ACT;
+    }
+
+    if (profileSnap.exists()) {
+      const studentProfile = profileSnap.val();
+      profileData.dob = studentProfile.DOB;
+      profileData.nationality = studentProfile.Nationality;
+      profileData.specialCircumstances = studentProfile['Special Circumstances'];
+
+      if (studentProfile['Career interests']) {
+        profileData.careerInterests = Object.keys(studentProfile['Career interests']);
+      }
+    }
+
+    if (essaysSnap.exists()) {
+      const essaysData = essaysSnap.val();
+      const personalStatements: Essay[] = [];
+      const supplementaryEssays: Essay[] = [];
+      let activitiesEssay: { createdAt: string; activities: any } | null = null;
+
+      for (const title in essaysData) {
+        const essay = essaysData[title];
+        const essayType = essay.essayType;
+
+        if (essayType === 'personal_statement') {
+          personalStatements.push({
+            title,
+            text: essay.essayText || '',
+            createdAt: essay.createdAt || '',
+            reviewed: !!essay.reviewData,
+            type: 'personal_statement'
+          });
+        } else if (essayType === 'supplement') {
+          supplementaryEssays.push({
+            title,
+            text: essay.essayText || '',
+            createdAt: essay.createdAt || '',
+            reviewed: !!essay.reviewData,
+            universityName: essay.universityName,
+            type: 'supplement'
+          });
+        } else if (essay.activities) {
+          if (!activitiesEssay || essay.createdAt > activitiesEssay.createdAt) {
+            activitiesEssay = {
+              createdAt: essay.createdAt,
+              activities: essay.activities
+            };
+          }
+        }
+      }
+
+      if (personalStatements.length > 0) {
+        personalStatements.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        profileData.personalStatement = personalStatements[0];
+      }
+
+      profileData.supplementaryEssays = supplementaryEssays;
+
+      if (activitiesEssay) {
+        const activities: ActivityItem[] = [];
+        const activitiesData = activitiesEssay.activities;
+
+        for (const key in activitiesData) {
+          const activity = activitiesData[key];
+          if (activity && activity.id) {
+            activities.push({
+              id: activity.id,
+              name: activity.name || '',
+              description: activity.description || ''
+            });
+          }
+        }
+        profileData.activitiesList = activities;
+      }
+    }
+
+    return profileData;
+  } catch (error) {
+    console.error('Error fetching student profile data:', error);
+    return {};
   }
 };

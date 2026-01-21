@@ -341,7 +341,7 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <div className="mb-4">
             {!sidebarCollapsed && (
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Academic</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Profiles</p>
             )}
             <button
               onClick={() => setActiveTab('academic')}
@@ -352,119 +352,98 @@ export default function CounselorDashboard({ counselor, onLogout }: CounselorDas
                   ? 'bg-[#04ADEE] text-white shadow-sm'
                   : 'text-slate-700 hover:bg-slate-50'
               }`}
-              title={sidebarCollapsed ? 'Academic Tracking' : undefined}
+              title={sidebarCollapsed ? 'Student Profiles' : undefined}
             >
               <GraduationCap className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span>Academic Tracking</span>}
+              {!sidebarCollapsed && <span>Student Profiles</span>}
             </button>
           </div>
 
-          {counselor.role === 'pool_management' && (
-            <div className="mb-4">
+          <div className="mb-4">
+            {!sidebarCollapsed && (
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Pool Management</p>
+            )}
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`w-full flex items-center rounded-lg text-sm font-medium transition-all ${
+                sidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
+              } ${
+                activeTab === 'active'
+                  ? 'bg-[#04ADEE] text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-50'
+              }`}
+              title={sidebarCollapsed ? 'Active Pool' : undefined}
+            >
+              <Users className="w-5 h-5 flex-shrink-0" />
               {!sidebarCollapsed && (
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Pool Management</p>
+                <>
+                  <span>Active Pool</span>
+                  <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    activeTab === 'active' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {filteredAndSortedStudents.length}
+                  </span>
+                </>
               )}
-              <button
-                onClick={() => setActiveTab('active')}
-                className={`w-full flex items-center rounded-lg text-sm font-medium transition-all ${
-                  sidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
-                } ${
-                  activeTab === 'active'
-                    ? 'bg-[#04ADEE] text-white shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-50'
-                }`}
-                title={sidebarCollapsed ? 'Active Pool' : undefined}
-              >
-                <Users className="w-5 h-5 flex-shrink-0" />
-                {!sidebarCollapsed && (
-                  <>
-                    <span>Active Pool</span>
-                    <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      activeTab === 'active' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {filteredAndSortedStudents.length}
-                    </span>
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab('assigned')}
-                className={`w-full flex items-center rounded-lg text-sm font-medium transition-all ${
-                  sidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
-                } ${
-                  activeTab === 'assigned'
-                    ? 'bg-[#04ADEE] text-white shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-50'
-                }`}
-                title={sidebarCollapsed ? 'Assigned Students' : undefined}
-              >
-                <UserCheck className="w-5 h-5 flex-shrink-0" />
-                {!sidebarCollapsed && (
-                  <>
-                    <span>Assigned Students</span>
-                    <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      activeTab === 'assigned' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {totalAssigned}
-                    </span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
+            </button>
+            <button
+              onClick={() => setActiveTab('assigned')}
+              className={`w-full flex items-center rounded-lg text-sm font-medium transition-all ${
+                sidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
+              } ${
+                activeTab === 'assigned'
+                  ? 'bg-[#04ADEE] text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-50'
+              }`}
+              title={sidebarCollapsed ? 'Assigned Students' : undefined}
+            >
+              <UserCheck className="w-5 h-5 flex-shrink-0" />
+              {!sidebarCollapsed && (
+                <>
+                  <span>Assigned Students</span>
+                  <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    activeTab === 'assigned' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {totalAssigned}
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
 
-          {counselor.role === 'essay' && (
-            <div className="mb-4">
-              {!sidebarCollapsed && (
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Essays and Profiles</p>
+          <div className="mb-4">
+            {!sidebarCollapsed && (
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Essays</p>
+            )}
+            <button
+              onClick={() => setActiveTab('essays')}
+              className={`w-full flex items-center rounded-lg text-sm font-medium transition-all ${
+                sidebarCollapsed ? 'justify-center p-3 relative' : 'gap-3 px-3 py-2.5'
+              } ${
+                activeTab === 'essays'
+                  ? 'bg-[#04ADEE] text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-50'
+              }`}
+              title={sidebarCollapsed ? 'Essay Review' : undefined}
+            >
+              <FileText className="w-5 h-5 flex-shrink-0" />
+              {sidebarCollapsed && counts.unreviewedEssays > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
               )}
-              <button
-                onClick={() => setActiveTab('essays')}
-                className={`w-full flex items-center rounded-lg text-sm font-medium transition-all ${
-                  sidebarCollapsed ? 'justify-center p-3 relative' : 'gap-3 px-3 py-2.5'
-                } ${
-                  activeTab === 'essays'
-                    ? 'bg-[#04ADEE] text-white shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-50'
-                }`}
-                title={sidebarCollapsed ? 'Essay Review' : undefined}
-              >
-                <FileText className="w-5 h-5 flex-shrink-0" />
-                {sidebarCollapsed && counts.unreviewedEssays > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-                )}
-                {!sidebarCollapsed && (
-                  <>
-                    <span>Essay Review</span>
-                    {counts.unreviewedEssays > 0 && (
-                      <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        activeTab === 'essays' ? 'bg-white/20 text-white' : 'bg-red-500 text-white'
-                      }`}>
-                        {counts.unreviewedEssays}
-                      </span>
-                    )}
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('student_profiles');
-                  setSelectedStudentProfileId(null);
-                }}
-                className={`w-full flex items-center rounded-lg text-sm font-medium transition-all ${
-                  sidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'
-                } ${
-                  activeTab === 'student_profiles'
-                    ? 'bg-[#04ADEE] text-white shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-50'
-                }`}
-                title={sidebarCollapsed ? 'Student Profiles' : undefined}
-              >
-                <User className="w-5 h-5 flex-shrink-0" />
-                {!sidebarCollapsed && <span>Student Profiles</span>}
-              </button>
-            </div>
-          )}
+              {!sidebarCollapsed && (
+                <>
+                  <span>Essay Review</span>
+                  {counts.unreviewedEssays > 0 && (
+                    <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      activeTab === 'essays' ? 'bg-white/20 text-white' : 'bg-red-500 text-white'
+                    }`}>
+                      {counts.unreviewedEssays}
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+          </div>
 
           <div className="mb-4">
             {!sidebarCollapsed && (
