@@ -400,7 +400,7 @@ const AcademicTracking: React.FC = () => {
                 <div className="px-4 pb-4 border-t border-slate-200 mt-3">
                   <button
                     onClick={() => openEssayFromProfile(selectedStudentProfile.personalStatement!)}
-                    className="text-sm font-semibold text-[#04ADEE] hover:text-[#0396d5] hover:underline mb-3 block"
+                    className="text-lg font-semibold text-slate-900 hover:text-slate-700 hover:underline mb-3 block text-left"
                   >
                     {selectedStudentProfile.personalStatement.title}
                   </button>
@@ -482,7 +482,7 @@ const AcademicTracking: React.FC = () => {
                           <div className="flex-1">
                             <button
                               onClick={() => openEssayFromProfile(essay)}
-                              className="text-sm font-bold text-[#04ADEE] hover:text-[#0396d5] hover:underline mb-1 text-left"
+                              className="text-sm font-bold text-slate-900 hover:text-slate-700 hover:underline mb-1 text-left"
                             >
                               {essay.title}
                             </button>
