@@ -40,6 +40,7 @@ export interface StudentProfileData {
   act?: number;
   dob?: string;
   nationality?: string;
+  budget?: string;
   personalStatement?: Essay;
   activitiesList?: ActivityItem[];
   supplementaryEssays?: Essay[];
@@ -271,6 +272,7 @@ export const getStudentProfileData = async (studentName: string): Promise<Studen
       const studentProfile = profileSnap.val();
       profileData.dob = studentProfile.DOB;
       profileData.nationality = studentProfile.Nationality;
+      profileData.budget = studentProfile.Budget;
       profileData.specialCircumstances = studentProfile['Special Circumstances'];
 
       if (studentProfile['Career interests']) {

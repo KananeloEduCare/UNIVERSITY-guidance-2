@@ -3,7 +3,8 @@ import { BookOpen, TrendingUp, ArrowLeft, GraduationCap, Users, Search, Trophy, 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import AnimatedCounter from './AnimatedCounter';
 import CircularProgress from './CircularProgress';
-import { getCounselorAcademicData, StudentAcademicData, getStudentProfileData, StudentProfileData } from '../services/firebaseAcademicService';
+import { getCounselorAcademicData, StudentAcademicData, getStudentProfileData, StudentProfileData, Essay } from '../services/firebaseAcademicService';
+import { calculateAge } from '../utils/dateHelpers';
 
 
 
@@ -25,6 +26,8 @@ const AcademicTracking: React.FC = () => {
     careerInterests: false,
     specialCircumstances: false,
   });
+  const [viewingEssayFromProfile, setViewingEssayFromProfile] = useState(false);
+  const [viewingEssay, setViewingEssay] = useState<Essay | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -95,6 +98,18 @@ const AcademicTracking: React.FC = () => {
       ...prev,
       [section]: !prev[section],
     }));
+  };
+
+  const openEssayFromProfile = (essay: Essay) => {
+    setViewingEssay(essay);
+    setViewingEssayFromProfile(true);
+  };
+
+  const handleBackFromEssay = () => {
+    if (viewingEssayFromProfile && selectedStudent) {
+      setViewingEssay(null);
+      setViewingEssayFromProfile(false);
+    }
   };
 
   console.log('📋 Current students array length:', students.length);
@@ -170,6 +185,52 @@ const AcademicTracking: React.FC = () => {
     );
   }
 
+  if (viewingEssayFromProfile && viewingEssay) {
+    return (
+      <div className="-mx-8 -my-6">
+        <div className="bg-gradient-to-r from-[#04ADEE]/10 via-emerald-50 to-[#04ADEE]/10 border-b border-[#04ADEE]/20 px-8 py-5">
+          <button
+            onClick={handleBackFromEssay}
+            className="flex items-center gap-2 text-[#04ADEE] hover:text-[#0396d5] mb-3 transition-colors font-medium"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to {selectedStudent?.studentName}
+          </button>
+          <h2 className="text-2xl font-bold text-slate-900">{viewingEssay.title}</h2>
+          {viewingEssay.universityName && (
+            <p className="text-sm text-slate-600 mt-1">{viewingEssay.universityName}</p>
+          )}
+          <div className="flex items-center gap-2 mt-3">
+            {viewingEssay.reviewed ? (
+              <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold">
+                Reviewed
+              </span>
+            ) : (
+              <span className="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-semibold">
+                Unreviewed
+              </span>
+            )}
+            <span className="text-xs text-slate-500">Created: {viewingEssay.createdAt}</span>
+          </div>
+        </div>
+
+        <div className="px-8 py-6">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+            <div
+              className="prose prose-sm max-w-none text-slate-700 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: viewingEssay.text }}
+            />
+          </div>
+
+          <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <p className="text-sm text-slate-600 mb-2">
+              To add feedback or grade this essay, open it from the Essay Review tab in your dashboard.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedStudent) {
     const chartData = selectedStudent.subjectAverages.map(subject => ({
@@ -195,7 +256,7 @@ const AcademicTracking: React.FC = () => {
               <span className="text-sm">Loading profile data...</span>
             </div>
           ) : selectedStudentProfile && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div className="bg-white/80 backdrop-blur rounded-lg px-3 py-2 border border-slate-200">
                 <div className="text-xs text-slate-600 mb-0.5">Overall Average</div>
                 <div className="text-lg font-bold text-[#04ADEE]">{selectedStudent.overallAverage}%</div>
@@ -207,12 +268,16 @@ const AcademicTracking: React.FC = () => {
                 </div>
               </div>
               <div className="bg-white/80 backdrop-blur rounded-lg px-3 py-2 border border-slate-200">
-                <div className="text-xs text-slate-600 mb-0.5">Date of Birth</div>
-                <div className="text-lg font-bold text-slate-900">{selectedStudentProfile.dob || 'N/A'}</div>
+                <div className="text-xs text-slate-600 mb-0.5">Age</div>
+                <div className="text-lg font-bold text-slate-900">{calculateAge(selectedStudentProfile.dob || '')}</div>
               </div>
               <div className="bg-white/80 backdrop-blur rounded-lg px-3 py-2 border border-slate-200">
                 <div className="text-xs text-slate-600 mb-0.5">Nationality</div>
                 <div className="text-lg font-bold text-slate-900">{selectedStudentProfile.nationality || 'N/A'}</div>
+              </div>
+              <div className="bg-white/80 backdrop-blur rounded-lg px-3 py-2 border border-slate-200">
+                <div className="text-xs text-slate-600 mb-0.5">Budget</div>
+                <div className="text-lg font-bold text-slate-900">{selectedStudentProfile.budget || 'N/A'}</div>
               </div>
             </div>
           )}
@@ -333,9 +398,12 @@ const AcademicTracking: React.FC = () => {
               </button>
               {expandedSections.personalStatement && (
                 <div className="px-4 pb-4 border-t border-slate-200 mt-3">
-                  <div className="text-xs text-slate-500 mb-2">
-                    Created: {selectedStudentProfile.personalStatement.createdAt}
-                  </div>
+                  <button
+                    onClick={() => openEssayFromProfile(selectedStudentProfile.personalStatement!)}
+                    className="text-sm font-semibold text-[#04ADEE] hover:text-[#0396d5] hover:underline mb-3 block"
+                  >
+                    {selectedStudentProfile.personalStatement.title}
+                  </button>
                   <div
                     className="prose prose-sm max-w-none text-slate-700"
                     dangerouslySetInnerHTML={{ __html: selectedStudentProfile.personalStatement.text }}
@@ -412,7 +480,12 @@ const AcademicTracking: React.FC = () => {
                       <div key={index} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
-                            <h4 className="text-sm font-bold text-slate-900 mb-1">{essay.title}</h4>
+                            <button
+                              onClick={() => openEssayFromProfile(essay)}
+                              className="text-sm font-bold text-[#04ADEE] hover:text-[#0396d5] hover:underline mb-1 text-left"
+                            >
+                              {essay.title}
+                            </button>
                             <div className="flex items-center gap-2 flex-wrap">
                               {essay.universityName && (
                                 <span className="text-xs text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
