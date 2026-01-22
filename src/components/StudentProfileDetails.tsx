@@ -14,6 +14,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { StudentProfile } from '../services/studentProfilesService';
+import EssayReview from './EssayReview';
 
 interface SupplementaryEssay {
   id: string;
@@ -62,6 +63,13 @@ const DUMMY_SUPPLEMENTARY_ESSAYS: SupplementaryEssay[] = [
 interface StudentProfileDetailsProps {
   studentId: string;
   onBack: () => void;
+}
+
+interface EssayToReview {
+  id: string;
+  student_name: string;
+  essay_title: string;
+  essay_type: 'personal_statement' | 'supplement' | 'activity_list';
 }
 
 const DUMMY_STUDENT_DETAILS: Record<string, StudentProfile> = {
@@ -241,12 +249,33 @@ export default function StudentProfileDetails({
 }: StudentProfileDetailsProps) {
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [showFullStatement, setShowFullStatement] = useState(false);
+  const [selectedEssayForReview, setSelectedEssayForReview] = useState<EssayToReview | null>(null);
 
   useEffect(() => {
     const studentData = DUMMY_STUDENT_DETAILS[studentId];
     setStudent(studentData || null);
     setShowFullStatement(false);
   }, [studentId]);
+
+  const handleEssayClick = (essay: SupplementaryEssay) => {
+    const essayToReview: EssayToReview = {
+      id: `${student?.student?.name}___${essay.essay_title}`,
+      student_name: student?.student?.name || '',
+      essay_title: essay.essay_title,
+      essay_type: 'supplement'
+    };
+    setSelectedEssayForReview(essayToReview);
+  };
+
+  if (selectedEssayForReview && student) {
+    return (
+      <EssayReview
+        comeFromStudentProfile={true}
+        studentName={student.student?.name || ''}
+        onBackToStudentProfile={() => setSelectedEssayForReview(null)}
+      />
+    );
+  }
 
   const calculateAge = (dob: string) => {
     const birthDate = new Date(dob);
@@ -429,9 +458,10 @@ export default function StudentProfileDetails({
         </div>
         <div className="space-y-3">
           {DUMMY_SUPPLEMENTARY_ESSAYS.map((essay) => (
-              <div
+              <button
                 key={essay.id}
-                className="border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors"
+                onClick={() => handleEssayClick(essay)}
+                className="w-full text-left border border-slate-200 rounded-lg p-4 hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -470,7 +500,7 @@ export default function StudentProfileDetails({
                     )}
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
         </div>
       </div>

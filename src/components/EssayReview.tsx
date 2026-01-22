@@ -62,7 +62,17 @@ interface GeneralComment {
   created_at: string;
 }
 
-const EssayReview: React.FC = () => {
+interface EssayReviewProps {
+  comeFromStudentProfile?: boolean;
+  studentName?: string;
+  onBackToStudentProfile?: () => void;
+}
+
+const EssayReview: React.FC<EssayReviewProps> = ({
+  comeFromStudentProfile = false,
+  studentName,
+  onBackToStudentProfile
+}) => {
   const [essays, setEssays] = useState<Essay[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEssay, setSelectedEssay] = useState<Essay | null>(null);
@@ -246,16 +256,16 @@ const EssayReview: React.FC = () => {
       const essaysData: Essay[] = [];
       const data = snapshot.val();
 
-      Object.keys(data).forEach((studentName) => {
-        const studentEssays = data[studentName];
+      Object.keys(data).forEach((esName) => {
+        const studentEssays = data[esName];
 
         Object.keys(studentEssays).forEach((essayTitle) => {
           const essayData = studentEssays[essayTitle];
 
           if (essayData.status === 'submitted' || essayData.status === 'reviewed') {
             essaysData.push({
-              id: `${studentName}___${essayTitle}`,
-              student_name: studentName,
+              id: `${esName}___${essayTitle}`,
+              student_name: esName,
               essay_type: essayData.essayType || 'personal_statement',
               essay_title: essayTitle,
               essay_content: essayData.essayText || '',
@@ -273,12 +283,18 @@ const EssayReview: React.FC = () => {
       });
 
       essaysData.sort((a, b) => new Date(b.submission_date).getTime() - new Date(a.submission_date).getTime());
-      setEssays(essaysData);
+
+      if (comeFromStudentProfile && studentName) {
+        const filteredEssays = essaysData.filter(essay => essay.student_name === studentName);
+        setEssays(filteredEssays);
+      } else {
+        setEssays(essaysData);
+      }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [comeFromStudentProfile, studentName]);
 
   useEffect(() => {
     if (selectedEssay && selectedEssay.status === 'reviewed') {
@@ -658,6 +674,15 @@ const EssayReview: React.FC = () => {
   };
 
   useEffect(() => {
+    if (comeFromStudentProfile && !selectedEssay && essays.length > 0 && studentName) {
+      const essayByStudent = essays.find(e => e.student_name === studentName);
+      if (essayByStudent) {
+        handleEssayClick(essayByStudent.id);
+      }
+    }
+  }, [comeFromStudentProfile, essays, studentName, selectedEssay]);
+
+  useEffect(() => {
     if (selectedEssay && essayContentRef.current) {
       const cleanedHtml = cleanHtmlContent(selectedEssay.essay_content);
       essayContentRef.current.innerHTML = cleanedHtml;
@@ -708,15 +733,23 @@ const EssayReview: React.FC = () => {
   }
 
   if (selectedEssay) {
+    const handleBackClick = () => {
+      if (comeFromStudentProfile && onBackToStudentProfile) {
+        onBackToStudentProfile();
+      } else {
+        setSelectedEssay(null);
+      }
+    };
+
     return (
       <div className="-mx-8 -my-6">
         <div className="bg-gradient-to-r from-[#04ADEE]/10 via-emerald-50 to-[#04ADEE]/10 border-b border-[#04ADEE]/20 px-8 py-4">
           <button
-            onClick={() => setSelectedEssay(null)}
+            onClick={handleBackClick}
             className="flex items-center gap-2 text-[#04ADEE] hover:text-[#0396d5] mb-3 transition-colors font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Essays
+            {comeFromStudentProfile ? 'Back to Student Profile' : 'Back to Essays'}
           </button>
           <div className="flex items-start justify-between">
             <div className="flex-1">
