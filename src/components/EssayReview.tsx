@@ -343,6 +343,12 @@ const EssayReview: React.FC<EssayReviewProps> = ({
           }
         }
       });
+
+      if (counselorName) {
+        const counselorRef = ref(database, `University Data/${counselorName}`);
+        const snapshot = await get(counselorRef);
+        setHasRubric(snapshot.exists());
+      }
     }
   };
 
