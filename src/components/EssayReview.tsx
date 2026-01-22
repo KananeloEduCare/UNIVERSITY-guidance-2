@@ -779,6 +779,15 @@ const EssayReview: React.FC<EssayReviewProps> = ({
     );
   }
 
+  const handleRubricManagerClose = async () => {
+    setShowRubricManager(false);
+    if (counselorName) {
+      const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
+      const snapshot = await get(rubricRef);
+      setHasRubric(snapshot.exists());
+    }
+  };
+
   if (selectedEssay) {
     const handleBackClick = () => {
       if (comeFromStudentProfile && onBackToStudentProfile) {
@@ -1179,15 +1188,6 @@ const EssayReview: React.FC<EssayReviewProps> = ({
       </div>
     );
   }
-
-  const handleRubricManagerClose = async () => {
-    setShowRubricManager(false);
-    if (counselorName) {
-      const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
-      const snapshot = await get(rubricRef);
-      setHasRubric(snapshot.exists());
-    }
-  };
 
   return (
     <div className="-mx-8 -my-6">
