@@ -70,6 +70,7 @@ interface EssayToReview {
   student_name: string;
   essay_title: string;
   essay_type: 'personal_statement' | 'supplement' | 'activity_list';
+  university_name: string | null;
 }
 
 const DUMMY_STUDENT_DETAILS: Record<string, StudentProfile> = {
@@ -262,7 +263,8 @@ export default function StudentProfileDetails({
       id: `${student?.student?.name}___${essay.essay_title}`,
       student_name: student?.student?.name || '',
       essay_title: essay.essay_title,
-      essay_type: 'supplement'
+      essay_type: 'supplement',
+      university_name: essay.university_name
     };
     setSelectedEssayForReview(essayToReview);
   };
@@ -272,6 +274,7 @@ export default function StudentProfileDetails({
       <EssayReview
         comeFromStudentProfile={true}
         studentName={student.student?.name || ''}
+        essayTitle={selectedEssayForReview.essay_title}
         onBackToStudentProfile={() => setSelectedEssayForReview(null)}
       />
     );

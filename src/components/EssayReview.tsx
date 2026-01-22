@@ -65,12 +65,14 @@ interface GeneralComment {
 interface EssayReviewProps {
   comeFromStudentProfile?: boolean;
   studentName?: string;
+  essayTitle?: string;
   onBackToStudentProfile?: () => void;
 }
 
 const EssayReview: React.FC<EssayReviewProps> = ({
   comeFromStudentProfile = false,
   studentName,
+  essayTitle,
   onBackToStudentProfile
 }) => {
   const [essays, setEssays] = useState<Essay[]>([]);
@@ -294,7 +296,7 @@ const EssayReview: React.FC<EssayReviewProps> = ({
     });
 
     return () => unsubscribe();
-  }, [comeFromStudentProfile, studentName]);
+  }, [comeFromStudentProfile, studentName, essayTitle]);
 
   useEffect(() => {
     if (selectedEssay && selectedEssay.status === 'reviewed') {
@@ -674,13 +676,42 @@ const EssayReview: React.FC<EssayReviewProps> = ({
   };
 
   useEffect(() => {
-    if (comeFromStudentProfile && !selectedEssay && essays.length > 0 && studentName) {
-      const essayByStudent = essays.find(e => e.student_name === studentName);
-      if (essayByStudent) {
-        handleEssayClick(essayByStudent.id);
-      }
+    if (comeFromStudentProfile && !selectedEssay && studentName && essayTitle) {
+      const essayId = `${studentName}___${essayTitle}`;
+      const essayRef = ref(database, `University Data/Essays/${studentName}/${essayTitle}`);
+
+      onValue(essayRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const essayData = snapshot.val();
+          const essay: Essay = {
+            id: essayId,
+            student_name: studentName,
+            essay_type: essayData.essayType || 'supplement',
+            essay_title: essayTitle,
+            essay_content: essayData.essayText || '',
+            university_name: essayData.universityName || null,
+            submission_date: essayData.submittedAt || essayData.lastModified || new Date().toISOString().split('T')[0],
+            status: essayData.status || 'submitted',
+            total_points: essayData.reviewData?.totalPoints || null,
+            score: essayData.reviewData?.score || null,
+            font_family: essayData.fontFamily || 'Arial',
+            font_size: essayData.fontSize || 14,
+            reviewed_at: essayData.reviewData?.reviewedAt || undefined,
+            reviewData: essayData.reviewData || undefined
+          };
+          setSelectedEssay(essay);
+
+          if (essayData.reviewData) {
+            setInlineComments(essayData.reviewData.inlineComments || []);
+            setGeneralComments(essayData.reviewData.generalComments || []);
+          } else {
+            setInlineComments([]);
+            setGeneralComments([]);
+          }
+        }
+      }, { onlyOnce: true });
     }
-  }, [comeFromStudentProfile, essays, studentName, selectedEssay]);
+  }, [comeFromStudentProfile, studentName, essayTitle]);
 
   useEffect(() => {
     if (selectedEssay && essayContentRef.current) {

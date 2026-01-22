@@ -3,6 +3,7 @@ import { BookOpen, TrendingUp, ArrowLeft, GraduationCap, Users, Search, Trophy, 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import AnimatedCounter from './AnimatedCounter';
 import CircularProgress from './CircularProgress';
+import EssayReview from './EssayReview';
 import { getCounselorAcademicData, StudentAcademicData, getStudentProfileData, StudentProfileData, Essay } from '../services/firebaseAcademicService';
 import { calculateAge } from '../utils/dateHelpers';
 
@@ -112,6 +113,11 @@ const AcademicTracking: React.FC = () => {
     }
   };
 
+  const handleBackFromReview = () => {
+    setViewingEssay(null);
+    setViewingEssayFromProfile(false);
+  };
+
   console.log('📋 Current students array length:', students.length);
   console.log('🔍 Current search term:', searchTerm);
 
@@ -185,50 +191,14 @@ const AcademicTracking: React.FC = () => {
     );
   }
 
-  if (viewingEssayFromProfile && viewingEssay) {
+  if (viewingEssayFromProfile && viewingEssay && selectedStudent) {
     return (
-      <div className="-mx-8 -my-6">
-        <div className="bg-gradient-to-r from-[#04ADEE]/10 via-emerald-50 to-[#04ADEE]/10 border-b border-[#04ADEE]/20 px-8 py-5">
-          <button
-            onClick={handleBackFromEssay}
-            className="flex items-center gap-2 text-[#04ADEE] hover:text-[#0396d5] mb-3 transition-colors font-medium"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to {selectedStudent?.studentName}
-          </button>
-          <h2 className="text-2xl font-bold text-slate-900">{viewingEssay.title}</h2>
-          {viewingEssay.universityName && (
-            <p className="text-sm text-slate-600 mt-1">{viewingEssay.universityName}</p>
-          )}
-          <div className="flex items-center gap-2 mt-3">
-            {viewingEssay.reviewed ? (
-              <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold">
-                Reviewed
-              </span>
-            ) : (
-              <span className="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-semibold">
-                Unreviewed
-              </span>
-            )}
-            <span className="text-xs text-slate-500">Created: {viewingEssay.createdAt}</span>
-          </div>
-        </div>
-
-        <div className="px-8 py-6">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-            <div
-              className="prose prose-sm max-w-none text-slate-700 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: viewingEssay.text }}
-            />
-          </div>
-
-          <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <p className="text-sm text-slate-600 mb-2">
-              To add feedback or grade this essay, open it from the Essay Review tab in your dashboard.
-            </p>
-          </div>
-        </div>
-      </div>
+      <EssayReview
+        comeFromStudentProfile={true}
+        studentName={selectedStudent.studentName}
+        essayTitle={viewingEssay.title}
+        onBackToStudentProfile={handleBackFromReview}
+      />
     );
   }
 
