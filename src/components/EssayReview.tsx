@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, ArrowLeft, MessageSquare, Send, X, Check, Clock, AlertCircle, Star, ClipboardList } from 'lucide-react';
+import { FileText, ArrowLeft, MessageSquare, Send, X, Check, Clock, AlertCircle, Star, ClipboardList, Search } from 'lucide-react';
 import { database } from '../config/firebase';
 import { ref, onValue, set } from 'firebase/database';
 import { userStorage } from '../services/userStorage';
@@ -88,6 +88,8 @@ const EssayReview: React.FC<EssayReviewProps> = ({
   const [commentInput, setCommentInput] = useState('');
   const [generalCommentInput, setGeneralCommentInput] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_review' | 'reviewed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [essayTypeFilter, setEssayTypeFilter] = useState<'all' | 'personal_statement' | 'supplement' | 'activity_list'>('all');
   const [totalPointsInput, setTotalPointsInput] = useState<string>('');
   const [scoreInput, setScoreInput] = useState<string>('');
   const [showGradeModal, setShowGradeModal] = useState(false);
@@ -745,11 +747,19 @@ const EssayReview: React.FC<EssayReviewProps> = ({
     }
   };
 
-  const filteredEssays = filter === 'all'
-    ? essays
-    : filter === 'pending'
-    ? essays.filter(e => e.status === 'submitted')
-    : essays.filter(e => e.status === filter);
+  const filteredEssays = essays.filter(essay => {
+    const statusMatch = filter === 'all'
+      ? true
+      : filter === 'pending'
+      ? essay.status === 'submitted'
+      : essay.status === filter;
+
+    const searchMatch = searchQuery.trim() === '' || essay.student_name.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const typeMatch = essayTypeFilter === 'all' || essay.essay_type === essayTypeFilter;
+
+    return statusMatch && searchMatch && typeMatch;
+  });
 
   const submittedCount = essays.filter(e => e.status === 'submitted').length;
   const reviewedCount = essays.filter(e => e.status === 'reviewed').length;
@@ -1174,37 +1184,63 @@ const EssayReview: React.FC<EssayReviewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-              filter === 'all'
-                ? 'bg-[#04ADEE] text-white'
-                : 'bg-white text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            All ({essays.length})
-          </button>
-          <button
-            onClick={() => setFilter('pending')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-              filter === 'pending'
-                ? 'bg-[#04ADEE] text-white'
-                : 'bg-white text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            Pending Review ({submittedCount})
-          </button>
-          <button
-            onClick={() => setFilter('reviewed')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-              filter === 'reviewed'
-                ? 'bg-[#04ADEE] text-white'
-                : 'bg-white text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            Reviewed ({reviewedCount})
-          </button>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by student name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm"
+              />
+            </div>
+
+            <select
+              value={essayTypeFilter}
+              onChange={(e) => setEssayTypeFilter(e.target.value as any)}
+              className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#04ADEE] focus:border-transparent text-sm font-medium text-slate-700 bg-white hover:bg-slate-50"
+            >
+              <option value="all">All Types</option>
+              <option value="personal_statement">Personal Statements</option>
+              <option value="supplement">Supplementary Essays</option>
+              <option value="activity_list">Activity Lists</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                filter === 'all'
+                  ? 'bg-[#04ADEE] text-white'
+                  : 'bg-white text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              All ({essays.length})
+            </button>
+            <button
+              onClick={() => setFilter('pending')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                filter === 'pending'
+                  ? 'bg-[#04ADEE] text-white'
+                  : 'bg-white text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              Pending Review ({submittedCount})
+            </button>
+            <button
+              onClick={() => setFilter('reviewed')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                filter === 'reviewed'
+                  ? 'bg-[#04ADEE] text-white'
+                  : 'bg-white text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              Reviewed ({reviewedCount})
+            </button>
+          </div>
         </div>
       </div>
 
