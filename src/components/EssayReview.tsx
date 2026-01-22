@@ -238,8 +238,8 @@ const EssayReview: React.FC<EssayReviewProps> = ({
   useEffect(() => {
     const checkRubric = async () => {
       if (counselorName) {
-        const counselorRef = ref(database, `University Data/${counselorName}`);
-        const snapshot = await get(counselorRef);
+        const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
+        const snapshot = await get(rubricRef);
         setHasRubric(snapshot.exists());
       }
     };
@@ -345,8 +345,8 @@ const EssayReview: React.FC<EssayReviewProps> = ({
       });
 
       if (counselorName) {
-        const counselorRef = ref(database, `University Data/${counselorName}`);
-        const snapshot = await get(counselorRef);
+        const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
+        const snapshot = await get(rubricRef);
         setHasRubric(snapshot.exists());
       }
     }
@@ -1140,8 +1140,8 @@ const EssayReview: React.FC<EssayReviewProps> = ({
   const handleRubricManagerClose = async () => {
     setShowRubricManager(false);
     if (counselorName) {
-      const counselorRef = ref(database, `University Data/${counselorName}`);
-      const snapshot = await get(counselorRef);
+      const rubricRef = ref(database, `University Data/${counselorName}/grading_rubric`);
+      const snapshot = await get(rubricRef);
       setHasRubric(snapshot.exists());
     }
   };
