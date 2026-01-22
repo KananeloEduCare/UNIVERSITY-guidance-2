@@ -1133,6 +1133,49 @@ const EssayReview: React.FC<EssayReviewProps> = ({
             </div>
           </div>
         )}
+
+        {showNoRubricWarning && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="w-6 h-6 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">Set Up Rubric First</h3>
+                  <p className="text-sm text-slate-600">
+                    You need to set up a grading rubric before you can give feedback on essays. This ensures consistent and fair evaluations.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowNoRubricWarning(false)}
+                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium text-sm"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setShowNoRubricWarning(false);
+                    setShowRubricManager(true);
+                  }}
+                  className="flex-1 px-4 py-2 bg-[#04ADEE] text-white rounded-lg hover:bg-[#0396d5] transition-colors font-medium text-sm"
+                >
+                  Set Up Rubric
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRubricManager && (
+          <RubricManager
+            counselorName={counselorName}
+            onClose={handleRubricManagerClose}
+          />
+        )}
       </div>
     );
   }
