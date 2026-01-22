@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FileText, ArrowLeft, MessageSquare, Send, X, Check, Clock, AlertCircle, Star, ClipboardList, Search } from 'lucide-react';
 import { database } from '../config/firebase';
-import { ref, onValue, set } from 'firebase/database';
+import { ref, onValue, set, get } from 'firebase/database';
 import { userStorage } from '../services/userStorage';
 import RubricManager from './RubricManager';
 
@@ -236,12 +236,11 @@ const EssayReview: React.FC<EssayReviewProps> = ({
   };
 
   useEffect(() => {
-    const checkRubric = () => {
+    const checkRubric = async () => {
       if (counselorName) {
         const counselorRef = ref(database, `University Data/${counselorName}`);
-        onValue(counselorRef, (snapshot) => {
-          setHasRubric(snapshot.exists());
-        }, { onlyOnce: true });
+        const snapshot = await get(counselorRef);
+        setHasRubric(snapshot.exists());
       }
     };
 
@@ -1132,13 +1131,12 @@ const EssayReview: React.FC<EssayReviewProps> = ({
     );
   }
 
-  const handleRubricManagerClose = () => {
+  const handleRubricManagerClose = async () => {
     setShowRubricManager(false);
     if (counselorName) {
       const counselorRef = ref(database, `University Data/${counselorName}`);
-      onValue(counselorRef, (snapshot) => {
-        setHasRubric(snapshot.exists());
-      }, { onlyOnce: true });
+      const snapshot = await get(counselorRef);
+      setHasRubric(snapshot.exists());
     }
   };
 
